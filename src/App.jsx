@@ -1,102 +1,91 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, ChevronLeft, Volume2, VolumeX, RotateCcw, Check, Lock, Home, BookOpen, Award, HelpCircle, Play, Pause } from "lucide-react";
+import { ChevronRight, ChevronLeft, Volume2, VolumeX, RotateCcw, Check, Home, Award, Play, Pause, SkipBack, SkipForward, Menu, X, BookOpen, ExternalLink } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   XADREZ COM CARINHO — Curso completo em 20 aulas
-   Desenhado para uma estudante de 72 anos: ritmo calmo, contraste alto,
-   tipografia generosa, sem pressa, com voz opcional.
-   Estética: manuscrito iluminado moderno — creme, sépia, verde-musgo, dourado.
+   PROFESSOR DE XADREZ — 30 aulas, responsivo iPhone, progresso permanente
    ═══════════════════════════════════════════════════════════════════════════ */
 
 // ───────────────────────── DESIGN TOKENS ─────────────────────────
 const C = {
-  // Paleta "manuscrito iluminado" — calma e legível
-  cream: "#F5EFE0",        // fundo principal
-  creamDark: "#EBE3CE",    // fundo de cards
-  parchment: "#FAF6EA",    // tabuleiro casas claras
-  sepia: "#8B6F47",        // texto principal
-  sepiaDeep: "#5C4A33",    // texto importante
-  ink: "#2C1F0F",          // títulos
-  moss: "#5C7548",         // verde-musgo (acento principal)
-  mossLight: "#8FA876",    // hover/destaque suave
-  gold: "#B8945A",          // dourado (highlights)
-  goldBright: "#D4AF6B",    // dourado claro
-  rose: "#A8625C",          // vermelho-tijolo (perigo/captura)
-  sky: "#6B8CA8",           // azul-cinza (informação)
-  // Tabuleiro
+  cream: "#F5EFE0",
+  creamDark: "#EBE3CE",
+  parchment: "#FAF6EA",
+  sepia: "#8B6F47",
+  sepiaDeep: "#5C4A33",
+  ink: "#2C1F0F",
+  moss: "#5C7548",
+  mossLight: "#8FA876",
+  gold: "#B8945A",
+  goldBright: "#D4AF6B",
+  rose: "#A8625C",
+  sky: "#6B8CA8",
   lightSquare: "#F0E4C8",
   darkSquare: "#A88A5C",
-  // Highlights de movimento
   validMove: "rgba(92,117,72,0.45)",
   selectedSquare: "rgba(184,148,90,0.65)",
   captureSquare: "rgba(168,98,92,0.55)",
   hintSquare: "rgba(212,175,107,0.5)",
 };
 
-// ───────────────────────── PEÇAS SVG ─────────────────────────
-// Desenhadas à mão, estilo silhueta clássica, com sombra leve.
-// Cores: brancas (creme com contorno escuro) e pretas (escuro com contorno dourado).
+// ───────────────────────── HOOK RESPONSIVO ─────────────────────────
+function useViewport() {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    function onResize() { setW(window.innerWidth); }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return { w, isMobile: w < 760, isTablet: w >= 760 && w < 1024, isDesktop: w >= 1024 };
+}
 
+// ───────────────────────── PEÇAS SVG (mantidas idênticas — boas) ─────────────────────────
 function PieceSvg({ type, color, size = 64 }) {
   const fill = color === "w" ? "#FAF6EA" : "#2C1F0F";
   const stroke = color === "w" ? "#2C1F0F" : "#B8945A";
   const sw = 2.5;
-
   const paths = {
-    K: ( // Rei
-      <g>
-        <path d={`M 22.5 11.63 V 6 M 20 8 H 25`} stroke={stroke} strokeWidth={sw} strokeLinejoin="miter"/>
-        <path d={`M 22.5 25 C 22.5 25 27 17.5 25.5 14.5 C 25.5 14.5 24.5 12 22.5 12 C 20.5 12 19.5 14.5 19.5 14.5 C 18 17.5 22.5 25 22.5 25`} fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <path d={`M 11.5 37 C 17 40.5 27 40.5 32.5 37 L 32.5 30 C 32.5 30 41.5 25.5 38.5 19.5 C 34.5 13 25 16 22.5 23.5 L 22.5 27 L 22.5 23.5 C 19 16 9.5 13 6.5 19.5 C 3.5 25.5 11.5 29.5 11.5 29.5 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <path d={`M 11.5 30 C 17 27 27 27 32.5 30`} fill="none" stroke={stroke} strokeWidth={sw}/>
-        <path d={`M 11.5 33.5 C 17 30.5 27 30.5 32.5 33.5`} fill="none" stroke={stroke} strokeWidth={sw}/>
-        <path d={`M 11.5 37 C 17 34 27 34 32.5 37`} fill="none" stroke={stroke} strokeWidth={sw}/>
+    K: ( <g>
+      <path d={`M 22.5 11.63 V 6 M 20 8 H 25`} stroke={stroke} strokeWidth={sw} strokeLinejoin="miter"/>
+      <path d={`M 22.5 25 C 22.5 25 27 17.5 25.5 14.5 C 25.5 14.5 24.5 12 22.5 12 C 20.5 12 19.5 14.5 19.5 14.5 C 18 17.5 22.5 25 22.5 25`} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <path d={`M 11.5 37 C 17 40.5 27 40.5 32.5 37 L 32.5 30 C 32.5 30 41.5 25.5 38.5 19.5 C 34.5 13 25 16 22.5 23.5 L 22.5 27 L 22.5 23.5 C 19 16 9.5 13 6.5 19.5 C 3.5 25.5 11.5 29.5 11.5 29.5 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <path d={`M 11.5 30 C 17 27 27 27 32.5 30`} fill="none" stroke={stroke} strokeWidth={sw}/>
+      <path d={`M 11.5 33.5 C 17 30.5 27 30.5 32.5 33.5`} fill="none" stroke={stroke} strokeWidth={sw}/>
+      <path d={`M 11.5 37 C 17 34 27 34 32.5 37`} fill="none" stroke={stroke} strokeWidth={sw}/>
+    </g>),
+    Q: ( <g>
+      <path d={`M 9 26 C 17.5 24.5 30 24.5 36 26 L 38.5 13.5 L 31 25 L 30.7 10.9 L 25.5 24.5 L 22.5 10 L 19.5 24.5 L 14.3 10.9 L 14 25 L 6.5 13.5 L 9 26 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <path d={`M 9 26 C 9 28 10.5 28 11.5 30 C 12.5 31.5 12.5 31 12 33.5 C 10.5 34.5 11 36 11 36 C 9.5 37.5 11 38.5 11 38.5 C 17.5 39.5 27.5 39.5 34 38.5 C 34 38.5 35.5 37.5 34 36 C 34 36 34.5 34.5 33 33.5 C 32.5 31 32.5 31.5 33.5 30 C 34.5 28 36 28 36 26 C 27.5 24.5 17.5 24.5 9 26 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <circle cx="6" cy="12" r="2" fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <circle cx="14" cy="9" r="2" fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <circle cx="22.5" cy="8" r="2" fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <circle cx="31" cy="9" r="2" fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <circle cx="39" cy="12" r="2" fill={fill} stroke={stroke} strokeWidth={sw}/>
+    </g>),
+    R: ( <g>
+      <path d={`M 9 39 L 36 39 L 36 36 L 9 36 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <path d={`M 12.5 32 L 14 29.5 L 31 29.5 L 32.5 32 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <path d={`M 12 36 L 12 32 L 33 32 L 33 36 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <path d={`M 14 29.5 L 14 16.5 L 31 16.5 L 31 29.5 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
+      <path d={`M 14 16.5 L 11 14 L 11 9 L 15 9 L 15 11 L 20 11 L 20 9 L 25 9 L 25 11 L 30 11 L 30 9 L 34 9 L 34 14 L 31 16.5 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
+    </g>),
+    B: ( <g>
+      <g fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="butt">
+        <path d={`M 9 36 C 12.39 35.03 19.11 36.43 22.5 34 C 25.89 36.43 32.61 35.03 36 36 C 36 36 37.65 36.54 39 38 C 38.32 38.97 37.35 38.99 36 38.5 C 32.61 37.53 25.89 38.96 22.5 37.5 C 19.11 38.96 12.39 37.53 9 38.5 C 7.65 38.99 6.68 38.97 6 38 C 7.35 36.54 9 36 9 36 Z`}/>
+        <path d={`M 15 32 C 17.5 34.5 27.5 34.5 30 32 C 30.5 30.5 30 30 30 30 C 30 27.5 27.5 26 27.5 26 C 33 24.5 33.5 14.5 22.5 10.5 C 11.5 14.5 12 24.5 17.5 26 C 17.5 26 15 27.5 15 30 C 15 30 14.5 30.5 15 32 Z`}/>
+        <path d={`M 25 8 A 2.5 2.5 0 1 1 20 8 A 2.5 2.5 0 1 1 25 8 Z`}/>
       </g>
-    ),
-    Q: ( // Dama
-      <g>
-        <path d={`M 9 26 C 17.5 24.5 30 24.5 36 26 L 38.5 13.5 L 31 25 L 30.7 10.9 L 25.5 24.5 L 22.5 10 L 19.5 24.5 L 14.3 10.9 L 14 25 L 6.5 13.5 L 9 26 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <path d={`M 9 26 C 9 28 10.5 28 11.5 30 C 12.5 31.5 12.5 31 12 33.5 C 10.5 34.5 11 36 11 36 C 9.5 37.5 11 38.5 11 38.5 C 17.5 39.5 27.5 39.5 34 38.5 C 34 38.5 35.5 37.5 34 36 C 34 36 34.5 34.5 33 33.5 C 32.5 31 32.5 31.5 33.5 30 C 34.5 28 36 28 36 26 C 27.5 24.5 17.5 24.5 9 26 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <circle cx="6" cy="12" r="2" fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <circle cx="14" cy="9" r="2" fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <circle cx="22.5" cy="8" r="2" fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <circle cx="31" cy="9" r="2" fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <circle cx="39" cy="12" r="2" fill={fill} stroke={stroke} strokeWidth={sw}/>
-      </g>
-    ),
-    R: ( // Torre
-      <g>
-        <path d={`M 9 39 L 36 39 L 36 36 L 9 36 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <path d={`M 12.5 32 L 14 29.5 L 31 29.5 L 32.5 32 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <path d={`M 12 36 L 12 32 L 33 32 L 33 36 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <path d={`M 14 29.5 L 14 16.5 L 31 16.5 L 31 29.5 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
-        <path d={`M 14 16.5 L 11 14 L 11 9 L 15 9 L 15 11 L 20 11 L 20 9 L 25 9 L 25 11 L 30 11 L 30 9 L 34 9 L 34 14 L 31 16.5 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
-      </g>
-    ),
-    B: ( // Bispo
-      <g>
-        <g fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="butt">
-          <path d={`M 9 36 C 12.39 35.03 19.11 36.43 22.5 34 C 25.89 36.43 32.61 35.03 36 36 C 36 36 37.65 36.54 39 38 C 38.32 38.97 37.35 38.99 36 38.5 C 32.61 37.53 25.89 38.96 22.5 37.5 C 19.11 38.96 12.39 37.53 9 38.5 C 7.65 38.99 6.68 38.97 6 38 C 7.35 36.54 9 36 9 36 Z`}/>
-          <path d={`M 15 32 C 17.5 34.5 27.5 34.5 30 32 C 30.5 30.5 30 30 30 30 C 30 27.5 27.5 26 27.5 26 C 33 24.5 33.5 14.5 22.5 10.5 C 11.5 14.5 12 24.5 17.5 26 C 17.5 26 15 27.5 15 30 C 15 30 14.5 30.5 15 32 Z`}/>
-          <path d={`M 25 8 A 2.5 2.5 0 1 1 20 8 A 2.5 2.5 0 1 1 25 8 Z`}/>
-        </g>
-        <path d={`M 17.5 26 L 27.5 26 M 15 30 L 30 30 M 22.5 15.5 L 22.5 20.5 M 20 18 L 25 18`} fill="none" stroke={stroke} strokeWidth={sw} strokeLinejoin="miter"/>
-      </g>
-    ),
-    N: ( // Cavalo
-      <g fill={fill} stroke={stroke} strokeWidth={sw}>
-        <path d={`M 22 10 C 32.5 11 38.5 18 38 39 L 15 39 C 15 30 25 32.5 23 18`}/>
-        <path d={`M 24 18 C 24.38 20.91 18.45 25.37 16 27 C 13 29 13.18 31.34 11 31 C 9.958 30.06 12.41 27.96 11 28 C 10 28 11.19 29.23 10 30 C 9 30 5.997 31 6 26 C 6 24 12 14 12 14 C 12 14 13.89 12.1 14 10.5 C 13.27 9.506 13.5 8.5 13.5 7.5 C 14.5 5.5 16.5 4.5 16.5 4.5 L 18 8 C 18 8 20.5 5 22 5 C 22 5 24 6 23 8 C 22 9 22 9 22 9`}/>
-        <path d={`M 9.5 25.5 A 0.5 0.5 0 1 1 8.5 25.5 A 0.5 0.5 0 1 1 9.5 25.5 Z`} fill={stroke}/>
-        <path d={`M 14.5 15.5 A 0.5 1.5 0 1 1 13.5 15.5 A 0.5 1.5 0 1 1 14.5 15.5 Z`} fill={stroke} transform="matrix(0.866 0.5 -0.5 0.866 9.693 -5.173)"/>
-      </g>
-    ),
-    P: ( // Peão
-      <path d={`M 22.5 9 C 20.29 9 18.5 10.79 18.5 13 C 18.5 13.89 18.79 14.71 19.28 15.38 C 17.33 16.5 16 18.59 16 21 C 16 23.03 16.94 24.84 18.41 26.03 C 15.41 27.09 11 31.58 11 39.5 L 34 39.5 C 34 31.58 29.59 27.09 26.59 26.03 C 28.06 24.84 29 23.03 29 21 C 29 18.59 27.67 16.5 25.72 15.38 C 26.21 14.71 26.5 13.89 26.5 13 C 26.5 10.79 24.71 9 22.5 9 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>
-    ),
+      <path d={`M 17.5 26 L 27.5 26 M 15 30 L 30 30 M 22.5 15.5 L 22.5 20.5 M 20 18 L 25 18`} fill="none" stroke={stroke} strokeWidth={sw} strokeLinejoin="miter"/>
+    </g>),
+    N: ( <g fill={fill} stroke={stroke} strokeWidth={sw}>
+      <path d={`M 22 10 C 32.5 11 38.5 18 38 39 L 15 39 C 15 30 25 32.5 23 18`}/>
+      <path d={`M 24 18 C 24.38 20.91 18.45 25.37 16 27 C 13 29 13.18 31.34 11 31 C 9.958 30.06 12.41 27.96 11 28 C 10 28 11.19 29.23 10 30 C 9 30 5.997 31 6 26 C 6 24 12 14 12 14 C 12 14 13.89 12.1 14 10.5 C 13.27 9.506 13.5 8.5 13.5 7.5 C 14.5 5.5 16.5 4.5 16.5 4.5 L 18 8 C 18 8 20.5 5 22 5 C 22 5 24 6 23 8 C 22 9 22 9 22 9`}/>
+      <path d={`M 9.5 25.5 A 0.5 0.5 0 1 1 8.5 25.5 A 0.5 0.5 0 1 1 9.5 25.5 Z`} fill={stroke}/>
+      <path d={`M 14.5 15.5 A 0.5 1.5 0 1 1 13.5 15.5 A 0.5 1.5 0 1 1 14.5 15.5 Z`} fill={stroke} transform="matrix(0.866 0.5 -0.5 0.866 9.693 -5.173)"/>
+    </g>),
+    P: ( <path d={`M 22.5 9 C 20.29 9 18.5 10.79 18.5 13 C 18.5 13.89 18.79 14.71 19.28 15.38 C 17.33 16.5 16 18.59 16 21 C 16 23.03 16.94 24.84 18.41 26.03 C 15.41 27.09 11 31.58 11 39.5 L 34 39.5 C 34 31.58 29.59 27.09 26.59 26.03 C 28.06 24.84 29 23.03 29 21 C 29 18.59 27.67 16.5 25.72 15.38 C 26.21 14.71 26.5 13.89 26.5 13 C 26.5 10.79 24.71 9 22.5 9 Z`} fill={fill} stroke={stroke} strokeWidth={sw}/>),
   };
-
   return (
     <svg viewBox="0 0 45 45" width={size} height={size} style={{ filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>
       {paths[type]}
@@ -104,89 +93,109 @@ function PieceSvg({ type, color, size = 64 }) {
   );
 }
 
-// ───────────────────────── HOOK: VOZ ─────────────────────────
+// ───────────────────────── HOOK: VOZ (com fallback iOS) ─────────────────────────
 function useVoice() {
-  const [speaking, setSpeaking] = useState(false);
-  const [enabled, setEnabled] = useState(true);
-  const utterRef = useRef(null);
+  const [enabled, setEnabledState] = useState(() => {
+    try {
+      const v = localStorage.getItem("xc_voice_enabled");
+      return v === null ? true : v === "1";
+    } catch { return true; }
+  });
+  const setEnabled = useCallback((v) => {
+    setEnabledState(v);
+    try { localStorage.setItem("xc_voice_enabled", v ? "1" : "0"); } catch {}
+  }, []);
+  const [unlocked, setUnlocked] = useState(false);
 
   const speak = useCallback((text) => {
     if (!enabled || typeof window === "undefined" || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "pt-BR";
-    u.rate = 0.92;
-    u.pitch = 1.0;
-    // Tenta achar voz feminina pt-BR
-    const voices = window.speechSynthesis.getVoices();
-    const pt = voices.find(v => v.lang.startsWith("pt") && v.name.toLowerCase().includes("female")) ||
-               voices.find(v => v.lang.startsWith("pt"));
-    if (pt) u.voice = pt;
-    u.onstart = () => setSpeaking(true);
-    u.onend = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
-    utterRef.current = u;
-    window.speechSynthesis.speak(u);
-  }, [enabled]);
+    if (!unlocked) return; // No iOS, voz só toca após 1ª interação
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "pt-BR";
+      u.rate = 0.92;
+      u.pitch = 1.0;
+      const voices = window.speechSynthesis.getVoices();
+      const pt = voices.find(v => v.lang.startsWith("pt") && v.name.toLowerCase().includes("female")) ||
+                 voices.find(v => v.lang.startsWith("pt"));
+      if (pt) u.voice = pt;
+      window.speechSynthesis.speak(u);
+    } catch {}
+  }, [enabled, unlocked]);
 
   const stop = useCallback(() => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      setSpeaking(false);
+      try { window.speechSynthesis.cancel(); } catch {}
     }
   }, []);
 
-  return { speak, stop, speaking, enabled, setEnabled };
+  // Desbloqueia voz na 1ª interação do usuário (iOS exige isso)
+  const unlock = useCallback(() => {
+    if (unlocked || typeof window === "undefined" || !window.speechSynthesis) return;
+    try {
+      const silent = new SpeechSynthesisUtterance("");
+      silent.volume = 0;
+      window.speechSynthesis.speak(silent);
+    } catch {}
+    setUnlocked(true);
+  }, [unlocked]);
+
+  return { speak, stop, enabled, setEnabled, unlock, unlocked };
 }
 
-// ───────────────────────── HOOK: PROGRESSO ─────────────────────────
-// Usa state em memória (localStorage não funciona em artifacts)
+// ───────────────────────── HOOK: PROGRESSO (localStorage real) ─────────────────────────
+const PROGRESS_KEY = "xc_progress_v2";
 function useProgress() {
-  const [completed, setCompleted] = useState(new Set());
+  const [data, setData] = useState(() => {
+    try {
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { completed: [], lastLesson: null, slideByLesson: {} };
+  });
 
-  const markComplete = useCallback((lessonNum) => {
-    setCompleted(prev => new Set([...prev, lessonNum]));
+  const persist = useCallback((next) => {
+    setData(next);
+    try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(next)); } catch {}
   }, []);
 
-  const isComplete = useCallback((n) => completed.has(n), [completed]);
-  const isUnlocked = useCallback((n) => n === 1 || completed.has(n - 1), [completed]);
+  const markComplete = useCallback((lessonNum) => {
+    setData(prev => {
+      const next = { ...prev, completed: [...new Set([...prev.completed, lessonNum])] };
+      try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
 
-  return { completed, markComplete, isComplete, isUnlocked };
-}
+  const setLastLesson = useCallback((n, slideIdx = 0) => {
+    setData(prev => {
+      const next = { ...prev, lastLesson: n, slideByLesson: { ...prev.slideByLesson, [n]: slideIdx } };
+      try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
 
-// ───────────────────────── COMPONENTE: BOTÃO PRINCIPAL ─────────────────────────
-function BigButton({ children, onClick, variant = "primary", icon, disabled }) {
-  const styles = {
-    primary: { bg: C.moss, hover: C.mossLight, text: C.cream, border: C.sepiaDeep },
-    secondary: { bg: C.creamDark, hover: C.cream, text: C.sepiaDeep, border: C.sepia },
-    gold: { bg: C.gold, hover: C.goldBright, text: C.ink, border: C.sepiaDeep },
+  const getSlideForLesson = useCallback((n) => data.slideByLesson?.[n] ?? 0, [data]);
+
+  const reset = useCallback(() => {
+    persist({ completed: [], lastLesson: null, slideByLesson: {} });
+  }, [persist]);
+
+  const completedSet = useMemo(() => new Set(data.completed || []), [data.completed]);
+  const isComplete = useCallback((n) => completedSet.has(n), [completedSet]);
+
+  return {
+    completed: completedSet,
+    lastLesson: data.lastLesson,
+    markComplete,
+    isComplete,
+    setLastLesson,
+    getSlideForLesson,
+    reset,
   };
-  const s = styles[variant];
-  return (
-    <motion.button
-      onClick={onClick}
-      disabled={disabled}
-      whileHover={!disabled ? { scale: 1.03, backgroundColor: s.hover } : {}}
-      whileTap={!disabled ? { scale: 0.97 } : {}}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      style={{
-        backgroundColor: disabled ? C.creamDark : s.bg,
-        color: disabled ? C.sepia : s.text,
-        border: `2px solid ${disabled ? C.sepia : s.border}`,
-        opacity: disabled ? 0.5 : 1,
-        cursor: disabled ? "not-allowed" : "pointer",
-      }}
-      className="px-8 py-4 text-xl rounded-2xl shadow-lg flex items-center gap-3 font-medium tracking-wide"
-    >
-      {icon}
-      {children}
-    </motion.button>
-  );
 }
 // ───────────────────────── TABULEIRO ─────────────────────────
-// Posições representadas como [linha, coluna] onde [0,0] é a8 (canto superior esquerdo)
-// Peças: { type: 'K'|'Q'|'R'|'B'|'N'|'P', color: 'w'|'b' }
-
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const RANKS = ["8", "7", "6", "5", "4", "3", "2", "1"];
 
@@ -196,11 +205,9 @@ function parseSquare(name) {
   const r = RANKS.indexOf(name[1]);
   return [r, c];
 }
-
 function emptyBoard() {
   return Array.from({ length: 8 }, () => Array(8).fill(null));
 }
-
 function startingBoard() {
   const b = emptyBoard();
   const back = ["R","N","B","Q","K","B","N","R"];
@@ -212,8 +219,66 @@ function startingBoard() {
   }
   return b;
 }
+function bd(setup) {
+  const b = emptyBoard();
+  for (const [sq, p] of Object.entries(setup)) {
+    const [r, c] = parseSquare(sq);
+    b[r][c] = { color: p[0], type: p[1] };
+  }
+  return b;
+}
+function hl(...squares) { return squares.map(s => parseSquare(s)); }
+function arrow(from, to, color) { return { from: parseSquare(from), to: parseSquare(to), color }; }
 
-// Cálculo de movimentos válidos (simplificado para fins didáticos — sem en passant/roque/cravadas)
+// Aplica um lance "from-to" ao tabuleiro, retornando novo tabuleiro
+// move: "e2-e4" ou "e7-e8=Q" para promoção, "O-O" / "O-O-O" para roque
+// color: "w" ou "b"
+function applyMove(board, move, color) {
+  const next = board.map(row => row.map(p => p ? {...p} : null));
+  if (move === "O-O") {
+    // Roque pequeno
+    const row = color === "w" ? 7 : 0;
+    next[row][6] = next[row][4]; next[row][4] = null;  // Rei
+    next[row][5] = next[row][7]; next[row][7] = null;  // Torre
+    return { board: next, lastMove: { from: [row, 4], to: [row, 6] } };
+  }
+  if (move === "O-O-O") {
+    const row = color === "w" ? 7 : 0;
+    next[row][2] = next[row][4]; next[row][4] = null;
+    next[row][3] = next[row][0]; next[row][0] = null;
+    return { board: next, lastMove: { from: [row, 4], to: [row, 2] } };
+  }
+  // Movimento normal: "e2-e4" ou "e7-e8=Q"
+  const parts = move.split("-");
+  const from = parseSquare(parts[0]);
+  const toAndPromo = parts[1].split("=");
+  const to = parseSquare(toAndPromo[0]);
+  const promo = toAndPromo[1]; // 'Q', 'R', 'B', 'N' ou undefined
+  const piece = next[from[0]][from[1]];
+  next[to[0]][to[1]] = promo ? { color: piece.color, type: promo } : piece;
+  next[from[0]][from[1]] = null;
+  return { board: next, lastMove: { from, to } };
+}
+
+// Helper para construir uma sequência de lances comentados a partir do tabuleiro inicial.
+// moves = [{ move: "e2-e4", color: "w", comment: "...", arrows?: [...], label? }]
+function buildGameMoves(initialBoard, moves) {
+  let current = initialBoard;
+  const result = [];
+  for (const m of moves) {
+    const applied = applyMove(current, m.move, m.color);
+    current = applied.board;
+    result.push({
+      board: current,
+      lastMove: applied.lastMove,
+      comment: m.comment,
+      arrows: m.arrows,
+      label: m.label,
+    });
+  }
+  return result;
+}
+
 function getValidMoves(board, r, c) {
   const piece = board[r]?.[c];
   if (!piece) return [];
@@ -264,22 +329,22 @@ function getValidMoves(board, r, c) {
   return moves;
 }
 
-// ───────────────────────── COMPONENTE: TABULEIRO INTERATIVO ─────────────────────────
+// ───────────────────────── COMPONENTE: TABULEIRO RESPONSIVO ─────────────────────────
 function ChessBoard({
-  board,
-  onMove,
-  highlights = [],          // [[r,c], ...] casas marcadas em verde (movimentos válidos hint)
-  arrows = [],              // [{from:[r,c], to:[r,c], color}] setas didáticas
-  showCoordinates = true,
-  size = 480,
-  interactive = true,
-  highlightedPiece = null,  // [r,c] peça em foco (anel dourado)
-  showLastMove = null,      // {from, to}
-  pieceLabels = false,      // mostrar nome da peça em texto sob ela
+  board, onMove, highlights = [], arrows = [],
+  showCoordinates = true, size = 480,
+  interactive = true, highlightedPiece = null,
+  showLastMove = null,
 }) {
   const [selected, setSelected] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
   const sq = size / 8;
+
+  // Reset seleção quando o board muda externamente
+  useEffect(() => {
+    setSelected(null);
+    setValidMoves([]);
+  }, [board]);
 
   function handleSquareClick(r, c) {
     if (!interactive) return;
@@ -308,19 +373,16 @@ function ChessBoard({
   }
 
   return (
-    <div style={{ position: "relative", width: size, height: size }}>
-      {/* Moldura sépia */}
+    <div style={{ position: "relative", width: size, height: size, touchAction: "manipulation" }}>
       <div style={{
-        position: "absolute", inset: -14,
+        position: "absolute", inset: -10,
         background: `linear-gradient(135deg, ${C.sepiaDeep}, ${C.sepia})`,
-        borderRadius: 12,
-        boxShadow: "0 12px 40px rgba(44,31,15,0.35), inset 0 1px 0 rgba(255,255,255,0.1)",
+        borderRadius: 10,
+        boxShadow: "0 8px 24px rgba(44,31,15,0.3), inset 0 1px 0 rgba(255,255,255,0.1)",
       }}/>
-
-      {/* Tabuleiro */}
       <div style={{
         position: "absolute", inset: 0, borderRadius: 4, overflow: "hidden",
-        boxShadow: "inset 0 0 20px rgba(44,31,15,0.4)",
+        boxShadow: "inset 0 0 16px rgba(44,31,15,0.4)",
       }}>
         {Array.from({ length: 8 }).map((_, r) => (
           <div key={r} style={{ display: "flex" }}>
@@ -336,74 +398,57 @@ function ChessBoard({
                 (showLastMove.from[0] === r && showLastMove.from[1] === c) ||
                 (showLastMove.to[0] === r && showLastMove.to[1] === c)
               );
-
               return (
-                <motion.div
+                <div
                   key={c}
                   onClick={() => handleSquareClick(r, c)}
-                  whileHover={interactive ? { filter: "brightness(1.08)" } : {}}
                   style={{
                     width: sq, height: sq, position: "relative",
                     backgroundColor: isLight ? C.lightSquare : C.darkSquare,
                     cursor: interactive ? "pointer" : "default",
                     display: "flex", alignItems: "center", justifyContent: "center",
+                    WebkitTapHighlightColor: "transparent",
                   }}
                 >
-                  {/* Highlight de seleção */}
-                  {isSelected && (
-                    <div style={{ position: "absolute", inset: 0, backgroundColor: C.selectedSquare }}/>
-                  )}
-                  {/* Highlight didático (verde-musgo) */}
+                  {isSelected && <div style={{ position: "absolute", inset: 0, backgroundColor: C.selectedSquare }}/>}
                   {isHighlight && !isSelected && (
-                    <motion.div
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                      style={{ position: "absolute", inset: 0, backgroundColor: C.validMove }}
-                    />
+                    <div style={{ position: "absolute", inset: 0, backgroundColor: C.validMove }}/>
                   )}
-                  {/* Última jogada */}
                   {isLastMove && !isSelected && !isHighlight && (
                     <div style={{ position: "absolute", inset: 0, backgroundColor: C.hintSquare }}/>
                   )}
-                  {/* Coordenadas */}
                   {showCoordinates && c === 0 && (
                     <span style={{
-                      position: "absolute", left: 4, top: 2,
-                      fontSize: 11, fontWeight: 700,
+                      position: "absolute", left: 3, top: 1,
+                      fontSize: Math.max(9, sq * 0.18), fontWeight: 700,
                       color: isLight ? C.darkSquare : C.lightSquare,
                       fontFamily: "Crimson Text, serif",
+                      pointerEvents: "none",
                     }}>{RANKS[r]}</span>
                   )}
                   {showCoordinates && r === 7 && (
                     <span style={{
-                      position: "absolute", right: 4, bottom: 2,
-                      fontSize: 11, fontWeight: 700,
+                      position: "absolute", right: 3, bottom: 0,
+                      fontSize: Math.max(9, sq * 0.18), fontWeight: 700,
                       color: isLight ? C.darkSquare : C.lightSquare,
                       fontFamily: "Crimson Text, serif",
+                      pointerEvents: "none",
                     }}>{FILES[c]}</span>
                   )}
-                  {/* Indicador de movimento válido */}
                   {isValidMove && !isCapture && (
-                    <motion.div
-                      initial={{ scale: 0 }} animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                      style={{
-                        position: "absolute", width: sq * 0.32, height: sq * 0.32,
-                        borderRadius: "50%", backgroundColor: C.validMove,
-                        pointerEvents: "none",
-                      }}
-                    />
+                    <div style={{
+                      position: "absolute", width: sq * 0.32, height: sq * 0.32,
+                      borderRadius: "50%", backgroundColor: C.validMove,
+                      pointerEvents: "none",
+                    }}/>
                   )}
                   {isCapture && (
-                    <motion.div
-                      initial={{ scale: 0 }} animate={{ scale: 1 }}
-                      style={{
-                        position: "absolute", inset: 4,
-                        borderRadius: "50%", border: `4px solid ${C.captureSquare}`,
-                        pointerEvents: "none",
-                      }}
-                    />
+                    <div style={{
+                      position: "absolute", inset: 4,
+                      borderRadius: "50%", border: `4px solid ${C.captureSquare}`,
+                      pointerEvents: "none",
+                    }}/>
                   )}
-                  {/* Anel dourado em peça em foco */}
                   {isHighlightedPiece && (
                     <motion.div
                       animate={{ scale: [1, 1.08, 1] }}
@@ -416,31 +461,18 @@ function ChessBoard({
                       }}
                     />
                   )}
-                  {/* Peça */}
-                  <AnimatePresence>
-                    {piece && (
-                      <motion.div
-                        key={`${piece.color}${piece.type}-${r}-${c}`}
-                        layout
-                        layoutId={`piece-${r}-${c}-${piece.color}${piece.type}`}
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                        style={{ position: "relative", zIndex: 2 }}
-                      >
-                        <PieceSvg type={piece.type} color={piece.color} size={sq * 0.85} />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
+                  {piece && (
+                    <div style={{ position: "relative", zIndex: 2, pointerEvents: "none" }}>
+                      <PieceSvg type={piece.type} color={piece.color} size={sq * 0.85} />
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
         ))}
       </div>
 
-      {/* Setas didáticas SVG sobreposta */}
       {arrows.length > 0 && (
         <svg width={size} height={size} style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 5 }}>
           <defs>
@@ -448,19 +480,16 @@ function ChessBoard({
               <polygon points="0 0, 8 3, 0 6" fill={C.gold}/>
             </marker>
           </defs>
-          {arrows.map((arrow, i) => {
-            const x1 = arrow.from[1] * sq + sq/2;
-            const y1 = arrow.from[0] * sq + sq/2;
-            const x2 = arrow.to[1] * sq + sq/2;
-            const y2 = arrow.to[0] * sq + sq/2;
+          {arrows.map((arr, i) => {
+            const x1 = arr.from[1] * sq + sq/2;
+            const y1 = arr.from[0] * sq + sq/2;
+            const x2 = arr.to[1] * sq + sq/2;
+            const y2 = arr.to[0] * sq + sq/2;
             return (
-              <motion.line
+              <line
                 key={i}
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.8, delay: i * 0.2 }}
                 x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke={arrow.color || C.gold}
+                stroke={arr.color || C.gold}
                 strokeWidth={5}
                 strokeLinecap="round"
                 markerEnd="url(#arrowhead)"
@@ -473,23 +502,46 @@ function ChessBoard({
     </div>
   );
 }
-// ───────────────────────── CONTEÚDO DAS AULAS ─────────────────────────
-// Cada aula tem: slides[] com type: "intro"|"explain"|"practice"|"quiz"|"freestyle"
-// Cada slide tem texto, opcionalmente um tabuleiro, setas, destaques.
 
-// Helpers para construir tabuleiros rápido
-function bd(setup) {
-  // setup = { e4: 'wK', d5: 'bP' }
-  const b = emptyBoard();
-  for (const [sq, p] of Object.entries(setup)) {
-    const [r, c] = parseSquare(sq);
-    b[r][c] = { color: p[0], type: p[1] };
-  }
-  return b;
+// ───────────────────────── BOTÕES ─────────────────────────
+function BigButton({ children, onClick, variant = "primary", icon, disabled, fullWidth }) {
+  const styles = {
+    primary: { bg: C.moss, hover: C.mossLight, text: C.cream, border: C.sepiaDeep },
+    secondary: { bg: C.creamDark, hover: C.cream, text: C.sepiaDeep, border: C.sepia },
+    gold: { bg: C.gold, hover: C.goldBright, text: C.ink, border: C.sepiaDeep },
+  };
+  const s = styles[variant];
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        backgroundColor: disabled ? C.creamDark : s.bg,
+        color: disabled ? C.sepia : s.text,
+        border: `2px solid ${disabled ? C.sepia : s.border}`,
+        opacity: disabled ? 0.5 : 1,
+        cursor: disabled ? "not-allowed" : "pointer",
+        padding: "14px 24px",
+        fontSize: 17,
+        borderRadius: 14,
+        boxShadow: disabled ? "none" : "0 4px 12px rgba(0,0,0,0.1)",
+        display: "inline-flex", alignItems: "center", gap: 10,
+        fontWeight: 500, letterSpacing: "0.02em",
+        fontFamily: "Crimson Text, serif",
+        width: fullWidth ? "100%" : undefined,
+        justifyContent: "center",
+        WebkitTapHighlightColor: "transparent",
+        transition: "transform 0.1s, background-color 0.2s",
+        minHeight: 50,
+      }}
+      onTouchStart={(e) => { e.currentTarget.style.transform = "scale(0.97)"; }}
+      onTouchEnd={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+    >
+      {icon}
+      {children}
+    </button>
+  );
 }
-function hl(...squares) { return squares.map(s => parseSquare(s)); }
-function arrow(from, to, color) { return { from: parseSquare(from), to: parseSquare(to), color }; }
-
 const AULAS = [
   // ═══════════════════════ AULA 1: O TABULEIRO ═══════════════════════
   {
@@ -854,10 +906,7 @@ const AULAS = [
       },
     ]
   },
-];
-// Continuação de AULAS — aulas 6 a 15
-
-const AULAS_6_15 = [
+  // Continuação — aulas 6 a 15
   // ═══════════════════════ AULA 6: A DAMA ═══════════════════════
   {
     n: 6, titulo: "A Dama", subtitulo: "A peça mais poderosa",
@@ -1446,10 +1495,7 @@ const AULAS_6_15 = [
       },
     ]
   },
-];
-// Aulas 16 a 20
-
-const AULAS_16_20 = [
+  // Aulas 16 a 20
   // ═══════════════════════ AULA 16: PEÃO PASSADO ═══════════════════════
   {
     n: 16, titulo: "Peão Passado", subtitulo: "Promovendo a peão",
@@ -1679,76 +1725,33 @@ const AULAS_16_20 = [
         texto: "Em 19 aulas você aprendeu: o tabuleiro, todas as peças, capturas, xeque, mate, roque, empate, abertura, táticas, finais e estratégia. Agora vamos JOGAR uma partida juntas, comentada lance a lance, para você ver como tudo se conecta.",
       },
       {
-        type: "explain",
-        titulo: "Lance 1: 1.e4",
-        texto: "As brancas começam com 1.e4 — ocupando o centro e abrindo caminho para Bispo e Dama. Lance clássico, recomendado para iniciantes.",
-        board: bd({
-          a1:"wR",b1:"wN",c1:"wB",d1:"wQ",e1:"wK",f1:"wB",g1:"wN",h1:"wR",
-          a2:"wP",b2:"wP",c2:"wP",d2:"wP",e4:"wP",f2:"wP",g2:"wP",h2:"wP",
-          a7:"bP",b7:"bP",c7:"bP",d7:"bP",e7:"bP",f7:"bP",g7:"bP",h7:"bP",
-          a8:"bR",b8:"bN",c8:"bB",d8:"bQ",e8:"bK",f8:"bB",g8:"bN",h8:"bR",
-        }),
-        showLastMove: { from: parseSquare("e2"), to: parseSquare("e4") },
+        type: "gameReplay",
+        titulo: "Os primeiros lances de uma partida típica",
+        moves: buildGameMoves(startingBoard(), [
+          { move: "e2-e4", color: "w", comment: "1.e4 — Ocupando o centro e abrindo caminho para Bispo e Dama. Lance clássico, recomendado para iniciantes.", label: "Brancas" },
+          { move: "e7-e5", color: "b", comment: "1...e5 — Pretas espelham, ocupando seu próprio centro. Posição equilibrada.", label: "Pretas" },
+          { move: "g1-f3", color: "w", comment: "2.Cf3 — Brancas desenvolvem o cavalo E atacam o peão e5. Princípio da abertura aplicado!", label: "Brancas",
+            arrows: [arrow("f3", "e5", C.rose)],
+          },
+          { move: "b8-c6", color: "b", comment: "2...Cc6 — Pretas defendem o peão desenvolvendo um cavalo. Bom lance!", label: "Pretas" },
+          { move: "f1-c4", color: "w", comment: "3.Bc4 — Brancas desenvolvem o bispo apontando para f7, ponto fraco preto. Esta abertura se chama 'Italiana'.", label: "Brancas",
+            arrows: [arrow("c4", "f7", C.gold)],
+          },
+          { move: "f8-c5", color: "b", comment: "3...Bc5 — Pretas espelham. Posição simétrica, equilibrada — chamada 'Giuoco Piano' (Jogo Tranquilo).", label: "Pretas" },
+          { move: "O-O", color: "w", comment: "4.O-O — Brancas fazem o roque, colocando o Rei em segurança.", label: "Brancas" },
+          { move: "g8-f6", color: "b", comment: "4...Cf6 — Pretas desenvolvem o último cavalo, atacando o peão e4.", label: "Pretas" },
+        ]),
       },
       {
         type: "explain",
-        titulo: "Lance 1...e5: pretas espelham",
-        texto: "Pretas respondem 1...e5 — fazendo o mesmo, ocupando seu centro. Posição simétrica e equilibrada.",
-        board: bd({
-          a1:"wR",b1:"wN",c1:"wB",d1:"wQ",e1:"wK",f1:"wB",g1:"wN",h1:"wR",
-          a2:"wP",b2:"wP",c2:"wP",d2:"wP",e4:"wP",f2:"wP",g2:"wP",h2:"wP",
-          a7:"bP",b7:"bP",c7:"bP",d7:"bP",e5:"bP",f7:"bP",g7:"bP",h7:"bP",
-          a8:"bR",b8:"bN",c8:"bB",d8:"bQ",e8:"bK",f8:"bB",g8:"bN",h8:"bR",
-        }),
-        showLastMove: { from: parseSquare("e7"), to: parseSquare("e5") },
-      },
-      {
-        type: "explain",
-        titulo: "Lance 2.Cf3: desenvolvendo cavalo",
-        texto: "Brancas jogam 2.Cf3 — desenvolvem o cavalo E atacam o peão preto em e5. Princípio da abertura aplicado!",
-        board: bd({
-          a1:"wR",b1:"wN",c1:"wB",d1:"wQ",e1:"wK",f1:"wB",f3:"wN",h1:"wR",
-          a2:"wP",b2:"wP",c2:"wP",d2:"wP",e4:"wP",f2:"wP",g2:"wP",h2:"wP",
-          a7:"bP",b7:"bP",c7:"bP",d7:"bP",e5:"bP",f7:"bP",g7:"bP",h7:"bP",
-          a8:"bR",b8:"bN",c8:"bB",d8:"bQ",e8:"bK",f8:"bB",g8:"bN",h8:"bR",
-        }),
-        showLastMove: { from: parseSquare("g1"), to: parseSquare("f3") },
-        arrows: [arrow("f3", "e5", C.rose)],
-      },
-      {
-        type: "explain",
-        titulo: "2...Cc6: pretas defendem",
-        texto: "Pretas defendem o peão jogando 2...Cc6 — desenvolvendo um cavalo E protegendo e5. Bom lance!",
-        board: bd({
-          a1:"wR",b1:"wN",c1:"wB",d1:"wQ",e1:"wK",f1:"wB",f3:"wN",h1:"wR",
-          a2:"wP",b2:"wP",c2:"wP",d2:"wP",e4:"wP",f2:"wP",g2:"wP",h2:"wP",
-          a7:"bP",b7:"bP",c7:"bP",d7:"bP",e5:"bP",f7:"bP",g7:"bP",h7:"bP",
-          a8:"bR",c6:"bN",c8:"bB",d8:"bQ",e8:"bK",f8:"bB",g8:"bN",h8:"bR",
-        }),
-        showLastMove: { from: parseSquare("b8"), to: parseSquare("c6") },
-      },
-      {
-        type: "explain",
-        titulo: "3.Bc4: o Bispo Italiano",
-        texto: "Brancas jogam 3.Bc4 — desenvolvem o bispo apontando para f7, ponto fraco preto. Esta abertura se chama 'Italiana' — uma das mais antigas e populares.",
-        board: bd({
-          a1:"wR",b1:"wN",c1:"wB",d1:"wQ",e1:"wK",c4:"wB",f3:"wN",h1:"wR",
-          a2:"wP",b2:"wP",c2:"wP",d2:"wP",e4:"wP",f2:"wP",g2:"wP",h2:"wP",
-          a7:"bP",b7:"bP",c7:"bP",d7:"bP",e5:"bP",f7:"bP",g7:"bP",h7:"bP",
-          a8:"bR",c6:"bN",c8:"bB",d8:"bQ",e8:"bK",f8:"bB",g8:"bN",h8:"bR",
-        }),
-        showLastMove: { from: parseSquare("f1"), to: parseSquare("c4") },
-        arrows: [arrow("c4", "f7", C.gold)],
-      },
-      {
-        type: "explain",
-        titulo: "Continuação: roque + meio-jogo",
-        texto: "Em poucos lances, ambos os lados desenvolveriam mais peças e fariam o roque. Aí começa o meio-jogo, onde os planos estratégicos entram. Você já tem TODA a base para jogar isso!",
+        titulo: "Continuação: meio-jogo",
+        texto: "Daqui em diante, ambos terminam o desenvolvimento e começa o MEIO-JOGO — onde planos estratégicos entram. Você já tem toda a base para jogar isso na prática!",
       },
       {
         type: "explain",
         titulo: "Dica final: jogue muito!",
-        texto: "Xadrez se aprende JOGANDO. Aplicativos como Lichess.org (de graça!) e Chess.com permitem você jogar contra o computador no nível mais fácil. Comece pelos níveis bem baixos e suba devagar.",
+        texto: "Xadrez se aprende JOGANDO. O Lichess permite você jogar contra o computador no nível mais fácil, de graça e sem cadastro. Comece pelos níveis 1 ou 2 e suba devagar.",
+        link: { url: "https://lichess.org/setup/ai?lang=pt-BR", label: "Jogar agora no Lichess" },
       },
       {
         type: "explain",
@@ -1757,561 +1760,1070 @@ const AULAS_16_20 = [
       },
       {
         type: "complete",
-        titulo: "🏆 Curso concluído! 🏆",
-        texto: "Você completou o curso inteiro! 20 aulas, do tabuleiro ao mate. Agora é só jogar com calma, sem pressa, e aproveitar este jogo lindíssimo de mais de 1.500 anos.\n\nUm beijo do Victor — espero que tenha gostado!",
+        titulo: "Aula 20 concluída! 🎉",
+        texto: "Você terminou os fundamentos! Agora vamos para 10 aulas extras: puzzles, partidas históricas comentadas, e um caminho para você jogar de verdade.",
+      },
+    ]
+  },
+  // ═══════════════════════ AULA 21: MATE EM 1 ═══════════════════════
+  {
+    n: 21, titulo: "Mate em 1 — Parte 1", subtitulo: "Encontre o lance vencedor",
+    capitulo: "Quebra-cabeças",
+    slides: [
+      {
+        type: "intro",
+        titulo: "Hora de praticar mate!",
+        texto: "A partir de agora, você vai resolver QUEBRA-CABEÇAS de mate. São posições reais onde existe um lance que dá xeque-mate imediato. Sua tarefa: achar esse lance. Comece olhando todas as peças com calma.",
+      },
+      {
+        type: "explain",
+        titulo: "Como resolver",
+        texto: "Olhe a posição. Pergunte: 'qual peça pode dar xeque?'. Depois: 'esse xeque seria mate, ou o Rei foge?'. Quando achar o lance, clique na peça e na casa de destino.",
+      },
+      {
+        type: "practice",
+        titulo: "Puzzle 1: o mate da retaguarda",
+        texto: "Brancas jogam e dão mate em 1. O Rei preto está preso atrás dos próprios peões. Como a Torre branca pode aproveitar?",
+        board: bd({ e1: "wK", a1: "wR", h8: "bK", g7: "bP", f7: "bP", h7: "bP" }),
+        objetivo: { from: "a1", to: "a8" },
+        explicacaoPosMate: "Mate! Torre em a8 dá xeque pela 8ª fileira. O Rei em h8 está preso pelos próprios peões em f7, g7 e h7 — não há casa de fuga. Este é o famoso 'mate da retaguarda', muito comum em partidas reais.",
+      },
+      {
+        type: "practice",
+        titulo: "Puzzle 2: a Dama na borda",
+        texto: "Brancas jogam e dão mate em 1. Olhe o Rei preto na coluna 'a' — onde a Dama branca pode chegar para ameaçar?",
+        board: bd({ e1: "wK", c2: "wQ", a8: "bK", a7: "bP", b7: "bP" }),
+        objetivo: { from: "c2", to: "c8" },
+        explicacaoPosMate: "Mate! Dama em c8 dá xeque pela 8ª fileira. O Rei em a8 está preso pelos próprios peões em a7 e b7 — não tem casa para fugir. Torre seria igual, mas a Dama também faz!",
+      },
+      {
+        type: "practice",
+        titulo: "Puzzle 3: Cavalo afobado",
+        texto: "Brancas jogam e dão mate. Dica: o Cavalo branco tem um lance especial. Olhe o Rei preto na borda.",
+        board: bd({ e1: "wK", h6: "wN", g7: "wP", h8: "bK", h7: "bP" }),
+        objetivo: { from: "h6", to: "f7" },
+        explicacaoPosMate: "Mate! Cavalo em f7 dá xeque ao Rei em h8. O Rei não tem fuga: g8 é atacada pelo cavalo, h7 está com peão preto, e ele não pode capturar o Cavalo (longe demais).",
+      },
+      {
+        type: "complete",
+        titulo: "Aula 21 concluída! 🎉",
+        texto: "Você resolveu seus primeiros 3 puzzles de mate em 1. Próxima aula: mais 3, com táticas diferentes!",
+      },
+    ]
+  },
+
+  // ═══════════════════════ AULA 22: MATE EM 1 — PARTE 2 ═══════════════════════
+  {
+    n: 22, titulo: "Mate em 1 — Parte 2", subtitulo: "Mais quebra-cabeças",
+    capitulo: "Quebra-cabeças",
+    slides: [
+      {
+        type: "intro",
+        titulo: "Mais 3 puzzles!",
+        texto: "Vamos continuar treinando. Cada puzzle vai ficar um pouquinho mais difícil. Olhe a posição com calma — a resposta sempre está lá.",
+      },
+      {
+        type: "practice",
+        titulo: "Puzzle 1: a longa diagonal",
+        texto: "O Bispo branco em b2 controla a longa diagonal. Brancas jogam e dão mate em 1.",
+        board: bd({ e1: "wK", b2: "wB", a1: "wR", h8: "bK", h7: "bP", g7: "bP", e8: "bR" }),
+        objetivo: { from: "a1", to: "a8" },
+        explicacaoPosMate: "Mate! Torre em a8 dá xeque na 8ª fileira. A Torre preta em e8 não pode bloquear sem deixar o Rei em xeque pelo Bispo, e o Rei está preso pelos próprios peões.",
+      },
+      {
+        type: "practice",
+        titulo: "Puzzle 2: a 'tesoura'",
+        texto: "Duas torres trabalhando juntas é mortal. Brancas jogam e dão mate.",
+        board: bd({ a1: "wK", a7: "wR", h6: "wR", e8: "bK" }),
+        objetivo: { from: "h6", to: "h8" },
+        explicacaoPosMate: "Mate! A Torre em h8 dá xeque, e a Torre em a7 corta a 7ª fileira. Rei preso entre as duas.",
+      },
+      {
+        type: "practice",
+        titulo: "Puzzle 3: o Bispo silencioso",
+        texto: "Brancas jogam e dão mate. Pense: qual peça branca pode chegar a uma casa que ataque o Rei sem ser capturada?",
+        board: bd({ e1: "wK", c1: "wB", d1: "wQ", h8: "bK", h7: "bP", g7: "bP", a8: "bR" }),
+        objetivo: { from: "d1", to: "d8" },
+        explicacaoPosMate: "Mate! Dama em d8 dá xeque pela 8ª fileira. A Torre preta em a8 não pode bloquear (sairia da fileira), e o Rei não tem casa.",
+      },
+      {
+        type: "complete",
+        titulo: "Aula 22 concluída! 🎉",
+        texto: "Excelente! Você está enxergando os mates rapidinho agora. Próxima aula: mate em 2 — um nível acima.",
+      },
+    ]
+  },
+
+  // ═══════════════════════ AULA 23: MATE EM 2 ═══════════════════════
+  {
+    n: 23, titulo: "Mate em 1 — Parte 3", subtitulo: "Mais quebra-cabeças",
+    capitulo: "Quebra-cabeças",
+    slides: [
+      {
+        type: "intro",
+        titulo: "Continuando o treino",
+        texto: "Vamos com mais 3 puzzles de mate em 1. Cada um explora um tipo diferente de tema. Olhe sempre o Rei preto e procure como ameaçá-lo de forma definitiva.",
+      },
+      {
+        type: "practice",
+        titulo: "Puzzle 1: o Bispo e a Dama juntos",
+        texto: "Brancas jogam e dão mate em 1. Dica: a Dama tem uma casa onde, defendida pelo Bispo, dá mate ao Rei preto.",
+        board: bd({ e1: "wK", a1: "wB", g3: "wQ", h8: "bK", h7: "bP", f7: "bP" }),
+        objetivo: { from: "g3", to: "g7" },
+        explicacaoPosMate: "Mate! Dama vai a g7 dando xeque ao Rei em h8. A Dama está PROTEGIDA pelo Bispo na longa diagonal a1-h8 (passa por g7). O Rei não pode capturar (Bispo defende), não tem fuga (peões e ataque cobrem tudo).",
+      },
+      {
+        type: "practice",
+        titulo: "Puzzle 2: o sufoco",
+        texto: "Brancas jogam e dão mate em 1. O Rei preto está apertado entre seus peões. Qual peça branca pode dar o golpe final?",
+        board: bd({ e1: "wK", h3: "wR", e8: "bK", d7: "bP", e7: "bP", f7: "bP" }),
+        objetivo: { from: "h3", to: "h8" },
+        explicacaoPosMate: "Mate! Torre em h8 dá xeque na 8ª fileira. O Rei em e8 não tem fuga: d8 e f8 atacadas pela Torre, e os peões em d7/e7/f7 fecham a saída para a 7ª fileira.",
+      },
+      {
+        type: "practice",
+        titulo: "Puzzle 3: o salto fatal",
+        texto: "Brancas jogam e dão mate em 1. O Cavalo branco tem um salto especial. Olhe o Rei preto preso no canto.",
+        board: bd({ e1: "wK", c4: "wB", e5: "wN", h8: "bK", g8: "bN", h7: "bP", g7: "bP" }),
+        objetivo: { from: "e5", to: "f7" },
+        explicacaoPosMate: "Mate! Cavalo em f7 dá xeque ao Rei em h8. O Rei não tem para onde fugir: g8 está ocupada pelo seu próprio Cavalo, h7 pelo seu próprio peão. E ninguém consegue bloquear o xeque de Cavalo (cavalos pulam!).",
+      },
+      {
+        type: "complete",
+        titulo: "Aula 23 concluída! 🎉",
+        texto: "Você está cada vez melhor em encontrar mates! Próxima aula: a partida mais bonita do xadrez clássico — a Imortal!",
+      },
+    ]
+  },
+
+  // ═══════════════════════ AULA 24: PARTIDA HISTÓRICA — A IMORTAL ═══════════════════════
+  {
+    n: 24, titulo: "A Partida Imortal", subtitulo: "Anderssen vs Kieseritzky, 1851",
+    capitulo: "Partidas Clássicas",
+    slides: [
+      {
+        type: "intro",
+        titulo: "A obra-prima de 1851",
+        texto: "Em Londres, 1851, durante o primeiro torneio internacional de xadrez, dois mestres jogaram uma partida tão linda que ganhou o nome de 'A Imortal'. Adolf Anderssen sacrificou um Bispo, as duas Torres E a Dama — e ainda assim deu mate. É a partida mais espetacular do século 19.",
+      },
+      {
+        type: "explain",
+        titulo: "Era romântica do xadrez",
+        texto: "Naquela época, jogadores valorizavam ATAQUE acima de tudo. Sacrifícios audaciosos eram lance comum. A Imortal é o melhor exemplo desse estilo. Aperte 'Tocar tudo' no próximo slide e veja Anderssen sacrificar quase tudo!",
+      },
+      {
+        type: "gameReplay",
+        titulo: "A Imortal lance a lance",
+        moves: buildGameMoves(startingBoard(), [
+          { move: "e2-e4", color: "w", comment: "1.e4 — Anderssen abre normalmente, controlando o centro.", label: "Brancas" },
+          { move: "e7-e5", color: "b", comment: "1...e5 — Kieseritzky responde simetricamente.", label: "Pretas" },
+          { move: "f2-f4", color: "w", comment: "2.f4 — O Gambito do Rei! Anderssen oferece um peão para abrir linhas.", label: "Brancas" },
+          { move: "e5-f4", color: "b", comment: "2...exf4 — Kieseritzky aceita o sacrifício. Está com 1 peão a mais.", label: "Pretas" },
+          { move: "f1-c4", color: "w", comment: "3.Bc4 — Anderssen desenvolve o Bispo apontando para f7, ponto fraco preto.", label: "Brancas" },
+          { move: "d8-h4", color: "b", comment: "3...Dh4+ — Pretas dão xeque. Brancas perdem o roque.", label: "Pretas" },
+          { move: "e1-f1", color: "w", comment: "4.Rf1 — Rei se mexe. Sem roque agora — mas Anderssen não se importa.", label: "Brancas" },
+          { move: "b7-b5", color: "b", comment: "4...b5 — Pretas tentam expulsar o Bispo c4 e ganhar mais tempo.", label: "Pretas" },
+          { move: "c4-b5", color: "w", comment: "5.Bxb5 — Anderssen captura o peão. Recuperou o material!", label: "Brancas" },
+          { move: "g8-f6", color: "b", comment: "5...Cf6 — Pretas desenvolvem o cavalo, atacando o peão e4.", label: "Pretas" },
+          { move: "g1-f3", color: "w", comment: "6.Cf3 — Anderssen desenvolve cavalo atacando a Dama preta.", label: "Brancas" },
+          { move: "h4-h6", color: "b", comment: "6...Dh6 — Dama recua para casa segura.", label: "Pretas" },
+          { move: "d2-d3", color: "w", comment: "7.d3 — Apoia o peão e4 e abre o Bispo c1.", label: "Brancas" },
+          { move: "f6-h5", color: "b", comment: "7...Ch5 — Cavalo na borda, defendendo o peão f4.", label: "Pretas" },
+          { move: "f3-h4", color: "w", comment: "8.Ch4 — Anderssen ataca o cavalo h5.", label: "Brancas" },
+          { move: "h6-g5", color: "b", comment: "8...Dg5 — Dama vai pra g5.", label: "Pretas" },
+          { move: "h4-f5", color: "w", comment: "9.Cf5 — Cavalo voa pra casa central, atacando a Dama!", label: "Brancas" },
+          { move: "c7-c6", color: "b", comment: "9...c6 — Pretas atacam o Bispo b5.", label: "Pretas" },
+          { move: "g2-g4", color: "w", comment: "10.g4 — Anderssen avança peão, atacando o cavalo h5.", label: "Brancas" },
+          { move: "h5-f6", color: "b", comment: "10...Cf6 — Cavalo recua.", label: "Pretas" },
+          { move: "h1-g1", color: "w", comment: "11.Tg1!! — Anderssen IGNORA a ameaça ao Bispo b5! Sacrifício!", label: "Brancas" },
+          { move: "c6-b5", color: "b", comment: "11...cxb5 — Pretas capturam o Bispo. Estão com peça a mais.", label: "Pretas" },
+          { move: "h2-h4", color: "w", comment: "12.h4 — Anderssen continua atacando, ignorando o material!", label: "Brancas" },
+          { move: "g5-g6", color: "b", comment: "12...Dg6 — Dama recua.", label: "Pretas" },
+          { move: "h4-h5", color: "w", comment: "13.h5 — Avança o peão expulsando a Dama.", label: "Brancas" },
+          { move: "g6-g5", color: "b", comment: "13...Dg5 — Dama recua de novo.", label: "Pretas" },
+          { move: "d1-f3", color: "w", comment: "14.Df3 — Anderssen desenvolve a Dama com ameaças duplas.", label: "Brancas" },
+          { move: "f6-g8", color: "b", comment: "14...Cg8 — Pretas têm que recuar feio para defender.", label: "Pretas" },
+          { move: "c1-f4", color: "w", comment: "15.Bxf4 — Anderssen captura o peão e desenvolve o Bispo.", label: "Brancas" },
+          { move: "g5-f6", color: "b", comment: "15...Df6 — Dama tenta forçar troca.", label: "Pretas" },
+          { move: "b1-c3", color: "w", comment: "16.Cc3 — Anderssen desenvolve seu último cavalo. TODAS as peças ativas.", label: "Brancas" },
+          { move: "f8-c5", color: "b", comment: "16...Bc5 — Pretas finalmente desenvolvem o Bispo.", label: "Pretas" },
+          { move: "c3-d5", color: "w", comment: "17.Cd5 — Cavalo invasor no centro, atacando a Dama!", label: "Brancas" },
+          { move: "f6-b2", color: "b", comment: "17...Dxb2 — Pretas capturam peão b2 e ameaçam a Torre a1.", label: "Pretas" },
+          { move: "f4-d6", color: "w", comment: "18.Bd6!! — Anderssen IGNORA a ameaça às duas Torres! O sacrifício duplo!", label: "Brancas" },
+          { move: "b2-a1", color: "b", comment: "18...Dxa1+ — Pretas capturam uma Torre dando xeque! Material vantajoso ENORME.", label: "Pretas" },
+          { move: "f1-e2", color: "w", comment: "19.Re2 — Rei foge. Anderssen sacrificou DUAS Torres + um Bispo.", label: "Brancas" },
+          { move: "b8-a6", color: "b", comment: "19...Ca6 — Pretas tentam defender g7 (mate ameaçado).", label: "Pretas" },
+          { move: "f5-g7", color: "w", comment: "20.Nxg7+ — Cavalo captura, dando xeque!", label: "Brancas" },
+          { move: "e8-d8", color: "b", comment: "20...Kd8 — Rei foge.", label: "Pretas" },
+          { move: "f3-f6", color: "w", comment: "21.Df6+!! — SACRIFÍCIO DA DAMA! Anderssen oferece a peça mais valiosa!", label: "Brancas" },
+          { move: "g8-f6", color: "b", comment: "21...Nxf6 — Pretas capturam a Dama. Mas estão presas...", label: "Pretas" },
+          { move: "d6-e7", color: "w", comment: "22.Be7# — XEQUE-MATE! Bispo + Cavalo + peão dão mate. Anderssen ganhou com 3 peças menores, sem Dama, sem Torres!", label: "Brancas",
+            arrows: [arrow("e7", "d8", C.rose)],
+          },
+        ]),
+      },
+      {
+        type: "explain",
+        titulo: "Por que essa partida é IMORTAL",
+        texto: "Anderssen sacrificou: 1 Bispo, 2 Torres, 1 Dama — material que valeria 21 pontos. E ainda assim deu mate! Foi a primeira partida do tipo 'romântico' tão extrema. 4 anos depois, o austríaco Falkbeer a apelidou de 'Imortal'. Até hoje é uma das partidas mais estudadas da história.",
+      },
+      {
+        type: "explain",
+        titulo: "Quer ver com mais comentários?",
+        texto: "No Lichess você pode reproduzir a partida com explicações detalhadas, e há vídeos ótimos no YouTube em português também.",
+        link: { url: "https://www.youtube.com/results?search_query=partida+imortal+anderssen+comentada", label: "Buscar no YouTube" },
+      },
+      {
+        type: "complete",
+        titulo: "Aula 24 concluída! 🎉",
+        texto: "Você conheceu uma das obras-primas do xadrez. Próxima aula: outra partida famosa, esta jogada na ÓPERA por Paul Morphy!",
+      },
+    ]
+  },
+
+  // ═══════════════════════ AULA 25: PARTIDA NA ÓPERA ═══════════════════════
+  {
+    n: 25, titulo: "A Partida da Ópera", subtitulo: "Morphy, Paris 1858",
+    capitulo: "Partidas Clássicas",
+    slides: [
+      {
+        type: "intro",
+        titulo: "Uma noite na Ópera de Paris",
+        texto: "1858. Paul Morphy, um americano de 21 anos considerado o melhor jogador do mundo, foi à Ópera de Paris com amigos aristocratas. No intervalo, dois nobres (o Duque de Brunswick e o Conde de Isouard) o desafiaram para uma partida. Morphy jogou — e ouvia a ópera ao fundo! Em apenas 17 lances, ele deu mate.",
+      },
+      {
+        type: "explain",
+        titulo: "Por que esta partida é especial",
+        texto: "Esta partida é perfeita para iniciantes porque mostra TODOS OS PRINCÍPIOS DA ABERTURA: controle do centro, desenvolvimento rápido, roque, e ataque ao rei descoberto. Aperte 'Tocar tudo' no próximo slide e veja a magia acontecer — ou clique nas setas pra avançar lance a lance no seu ritmo.",
+      },
+      {
+        type: "gameReplay",
+        titulo: "A Partida da Ópera lance a lance",
+        moves: buildGameMoves(startingBoard(), [
+          { move: "e2-e4", color: "w", comment: "1.e4 — Morphy abre com o peão central. O lance mais clássico do mundo.", label: "Brancas" },
+          { move: "e7-e5", color: "b", comment: "1...e5 — Pretas espelham, ocupando o centro.", label: "Pretas" },
+          { move: "g1-f3", color: "w", comment: "2.Cf3 — Morphy desenvolve o cavalo e ataca o peão e5.", label: "Brancas" },
+          { move: "d7-d6", color: "b", comment: "2...d6 — Pretas defendem o peão de modo passivo. Esta é a Defesa Philidor. Cc6 seria mais ativo.", label: "Pretas" },
+          { move: "d2-d4", color: "w", comment: "3.d4 — Morphy ataca o centro. Pressão máxima desde o começo.", label: "Brancas" },
+          { move: "c8-g4", color: "b", comment: "3...Bg4 — Pretas cravam o cavalo de Morphy. Parece bom, mas perde tempo.", label: "Pretas" },
+          { move: "d4-e5", color: "w", comment: "4.dxe5 — Morphy captura o peão e5, expondo um problema.", label: "Brancas" },
+          { move: "g4-f3", color: "b", comment: "4...Bxf3 — Pretas precisam capturar o cavalo, senão perdem material.", label: "Pretas" },
+          { move: "d1-f3", color: "w", comment: "5.Dxf3 — Morphy recaptura com a Dama. As pretas já trocaram um Bispo por Cavalo.", label: "Brancas" },
+          { move: "d6-e5", color: "b", comment: "5...dxe5 — Pretas recuperam o peão. Material igual, mas Morphy tem MELHOR desenvolvimento.", label: "Pretas" },
+          { move: "f1-c4", color: "w", comment: "6.Bc4 — Morphy desenvolve o Bispo apontando para f7, o ponto fraco preto. Ameaça de mate iminente!", label: "Brancas" },
+          { move: "g8-f6", color: "b", comment: "6...Cf6 — Pretas defendem f7 com o cavalo, atacando a Dama branca.", label: "Pretas" },
+          { move: "f3-b3", color: "w", comment: "7.Db3 — Morphy joga a Dama para b3, atacando b7 E mantendo a pressão sobre f7.", label: "Brancas" },
+          { move: "d8-e7", color: "b", comment: "7...De7 — Pretas defendem com a Dama, mas bloqueiam o próprio Bispo de f8. Posição feia.", label: "Pretas" },
+          { move: "b1-c3", color: "w", comment: "8.Cc3 — Morphy desenvolve o último cavalo. Princípio: complete o desenvolvimento ANTES de atacar.", label: "Brancas" },
+          { move: "c7-c6", color: "b", comment: "8...c6 — Pretas defendem b7 e tentam respirar.", label: "Pretas" },
+          { move: "c1-g5", color: "w", comment: "9.Bg5 — Morphy desenvolve o último Bispo, cravando o cavalo preto. TODAS as peças de Morphy estão ativas.", label: "Brancas" },
+          { move: "b7-b5", color: "b", comment: "9...b5 — Pretas tentam expulsar o Bispo branco. Lance desesperado.", label: "Pretas" },
+          { move: "c3-b5", color: "w", comment: "10.Cxb5! — SACRIFÍCIO de Cavalo! Morphy aceita perder material para abrir as linhas.", label: "Brancas" },
+          { move: "c6-b5", color: "b", comment: "10...cxb5 — Pretas capturam. Agora ficam com peça a mais... mas em apuros.", label: "Pretas" },
+          { move: "c4-b5", color: "w", comment: "11.Bxb5+ — Xeque! O Bispo captura o peão e ataca o Rei preto.", label: "Brancas" },
+          { move: "b8-d7", color: "b", comment: "11...Cbd7 — Pretas bloqueiam o xeque com o cavalo. Mas agora o cavalo está cravado.", label: "Pretas" },
+          { move: "O-O-O", color: "w", comment: "12.O-O-O — Morphy faz o ROQUE GRANDE! Rei seguro e Torre na coluna 'd' atacando o cavalo cravado!", label: "Brancas" },
+          { move: "a8-d8", color: "b", comment: "12...Td8 — Pretas defendem o cavalo com a Torre.", label: "Pretas" },
+          { move: "d1-d7", color: "w", comment: "13.Txd7! — SACRIFÍCIO de Torre! Morphy quer destruir a defesa preta.", label: "Brancas" },
+          { move: "d8-d7", color: "b", comment: "13...Txd7 — Pretas capturam a Torre. Estão com 2 peças a mais!", label: "Pretas" },
+          { move: "h1-d1", color: "w", comment: "14.Td1 — Morphy traz a OUTRA Torre para a coluna 'd'. Ataque dobrado.", label: "Brancas" },
+          { move: "e7-e6", color: "b", comment: "14...De6 — Pretas tentam aliviar a pressão e oferecer troca de Damas.", label: "Pretas" },
+          { move: "b5-d7", color: "w", comment: "15.Bxd7+ — Xeque! O Bispo captura a Torre cravada.", label: "Brancas" },
+          { move: "f6-d7", color: "b", comment: "15...Cxd7 — O cavalo recaptura. Pretas agora estão sufocadas.", label: "Pretas" },
+          { move: "b3-b8", color: "w", comment: "16.Db8+!! — SACRIFÍCIO de DAMA! Morphy força o cavalo a capturar.", label: "Brancas" },
+          { move: "d7-b8", color: "b", comment: "16...Cxb8 — Pretas capturam a Dama. Mas agora não tem como impedir o mate!", label: "Pretas" },
+          { move: "d1-d8", color: "w", comment: "17.Td8# — XEQUE-MATE! A Torre dá mate, defendida pelo Bispo. Em 17 lances, Morphy ganhou contra DOIS adversários!", label: "Brancas",
+            arrows: [arrow("d8", "e8", C.rose)],
+          },
+        ]),
+      },
+      {
+        type: "explain",
+        titulo: "O que aprender desta partida",
+        texto: "1) DESENVOLVIMENTO: Morphy tirou todas as peças nos primeiros 9 lances\n2) ROQUE: ele protegeu o Rei rapidamente\n3) ATIVIDADE: cada peça tinha um propósito\n4) SACRIFÍCIOS: trocou material por TEMPO e POSIÇÃO\n5) TUDO PARA O REI: o ataque inteiro foi coordenado",
+      },
+      {
+        type: "explain",
+        titulo: "Quer ver mais comentado?",
+        texto: "Há vídeos ótimos no YouTube em português comentando essa partida. Procure 'Partida da Ópera Morphy comentada' e você acha. Essa partida é estudada por iniciantes pelo mundo todo há mais de 150 anos.",
+        link: { url: "https://www.youtube.com/results?search_query=partida+da+%C3%B3pera+morphy+comentada", label: "Buscar no YouTube" },
+      },
+      {
+        type: "complete",
+        titulo: "Aula 25 concluída! 🎉",
+        texto: "Você acabou de ver a partida mais didática da história do xadrez! Próxima aula: a Abertura Italiana — agora você vai aprender a APLICAR esses princípios.",
+      },
+    ]
+  },
+
+  // ═══════════════════════ AULA 26: ABERTURA ITALIANA ═══════════════════════
+  {
+    n: 26, titulo: "Abertura Italiana", subtitulo: "Sua primeira abertura",
+    capitulo: "Aberturas",
+    slides: [
+      {
+        type: "intro",
+        titulo: "Hora de aprender uma abertura",
+        texto: "Você já viu princípios gerais. Agora vamos aprender uma abertura ESPECÍFICA — a Italiana. É uma das mais antigas (séc. XVI!) e melhores para iniciantes. Você vai poder usar em todas as suas partidas.",
+      },
+      {
+        type: "gameReplay",
+        titulo: "A Italiana lance a lance",
+        moves: buildGameMoves(startingBoard(), [
+          { move: "e2-e4", color: "w", comment: "1.e4 — Brancas ocupam o centro. Lance clássico.", label: "Brancas" },
+          { move: "e7-e5", color: "b", comment: "1...e5 — Pretas espelham. Posição equilibrada.", label: "Pretas" },
+          { move: "g1-f3", color: "w", comment: "2.Cf3 — Brancas desenvolvem o Cavalo E atacam o peão e5.", label: "Brancas" },
+          { move: "b8-c6", color: "b", comment: "2...Cc6 — Pretas defendem o peão com o Cavalo. Tudo desenvolvendo.", label: "Pretas" },
+          { move: "f1-c4", color: "w", comment: "3.Bc4 — O 'Bispo Italiano'! Aponta para f7, ponto fraco preto. É daqui que vem o nome 'Italiana'.", label: "Brancas",
+            arrows: [arrow("c4", "f7", C.gold)],
+          },
+          { move: "f8-c5", color: "b", comment: "3...Bc5 — Pretas espelham, Bispo aponta para f2. Posição chamada 'Giuoco Piano' (Jogo Tranquilo).", label: "Pretas" },
+          { move: "c2-c3", color: "w", comment: "4.c3 — Brancas preparam d4 (avanço central forte).", label: "Brancas" },
+          { move: "g8-f6", color: "b", comment: "4...Cf6 — Último cavalo preto desenvolvido, atacando e4.", label: "Pretas" },
+          { move: "d2-d4", color: "w", comment: "5.d4 — Avanço central agressivo, abrindo o jogo.", label: "Brancas" },
+          { move: "e5-d4", color: "b", comment: "5...exd4 — Pretas capturam.", label: "Pretas" },
+          { move: "c3-d4", color: "w", comment: "6.cxd4 — Brancas recapturam, formando um centro de peões forte.", label: "Brancas" },
+          { move: "c5-b4", color: "b", comment: "6...Bb4+ — Pretas dão xeque. Brancas precisam responder.", label: "Pretas" },
+          { move: "b1-c3", color: "w", comment: "7.Cc3 — Bloqueia o xeque desenvolvendo o cavalo. Posição rica e equilibrada.", label: "Brancas" },
+          { move: "O-O", color: "w", comment: "Em poucos lances mais, brancas farão o roque pequeno (mostrado aqui pulando à frente). O Rei fica em segurança no canto.", label: "Hipotético: roque" },
+        ]),
+      },
+      {
+        type: "explain",
+        titulo: "Por que aprender a Italiana",
+        texto: "É didática: ensina os princípios de abertura na prática. Você desenvolve cavalos primeiro, depois bispos, faz o roque cedo. Não precisa decorar 20 lances — só 4 ou 5 e você já está bem. Use essa abertura em todas as suas primeiras partidas no Lichess.",
+      },
+      {
+        type: "explain",
+        titulo: "Quer praticar agora?",
+        texto: "Abra o Lichess e jogue uma partida contra o computador no nível 1. Comece com 1.e4 e siga os lances que você acabou de ver. Se errar, sem problema — analise depois.",
+        link: { url: "https://lichess.org/setup/ai?lang=pt-BR", label: "Praticar no Lichess agora" },
+      },
+      {
+        type: "complete",
+        titulo: "Aula 26 concluída! 🎉",
+        texto: "Sua primeira abertura está dominada! Próxima aula: a Defesa Siciliana, a mais popular do mundo profissional.",
+      },
+    ]
+  },
+
+  // ═══════════════════════ AULA 27: DEFESA SICILIANA ═══════════════════════
+  {
+    n: 27, titulo: "Defesa Siciliana", subtitulo: "A defesa mais popular do mundo",
+    capitulo: "Aberturas",
+    slides: [
+      {
+        type: "intro",
+        titulo: "Quando você joga de pretas",
+        texto: "Quando você é pretas, e brancas jogam 1.e4, você precisa decidir: aceito 1...e5 (simétrico) ou jogo algo diferente? A Siciliana (1...c5) é a defesa MAIS popular nos altos níveis. Magnus Carlsen, Kasparov, Fischer — todos jogam.",
+      },
+      {
+        type: "gameReplay",
+        titulo: "A Siciliana lance a lance",
+        moves: buildGameMoves(startingBoard(), [
+          { move: "e2-e4", color: "w", comment: "1.e4 — Brancas abrem com peão central, igual à Italiana.", label: "Brancas" },
+          { move: "c7-c5", color: "b", comment: "1...c5 — Pretas NÃO espelham! Atacam o centro pela diagonal. Esta é a Siciliana.", label: "Pretas" },
+          { move: "g1-f3", color: "w", comment: "2.Cf3 — Brancas desenvolvem o cavalo, preparando d4.", label: "Brancas" },
+          { move: "d7-d6", color: "b", comment: "2...d6 — Pretas preparam o desenvolvimento. Esta é a entrada da variante 'Najdorf', a mais famosa.", label: "Pretas" },
+          { move: "d2-d4", color: "w", comment: "3.d4 — Brancas atacam o centro forçando troca.", label: "Brancas" },
+          { move: "c5-d4", color: "b", comment: "3...cxd4 — Pretas capturam, abrindo a coluna 'c' para sua Torre futura.", label: "Pretas" },
+          { move: "f3-d4", color: "w", comment: "4.Cxd4 — Brancas recapturam com cavalo. Centro aberto.", label: "Brancas" },
+          { move: "g8-f6", color: "b", comment: "4...Cf6 — Pretas desenvolvem cavalo atacando o peão e4.", label: "Pretas" },
+          { move: "b1-c3", color: "w", comment: "5.Cc3 — Brancas defendem e4 com o segundo cavalo.", label: "Brancas" },
+          { move: "a7-a6", color: "b", comment: "5...a6 — A famosa variante Najdorf! Prepara b5 e expansão pelo flanco da Dama.", label: "Pretas" },
+        ]),
+      },
+      {
+        type: "explain",
+        titulo: "Por que a Siciliana é boa",
+        texto: "Ela dá às pretas: 1) controle assimétrico do centro; 2) coluna 'c' semiaberta para a Torre; 3) jogo agressivo e dinâmico. NÃO é defesa passiva — é uma defesa que LUTA pela vitória.",
+      },
+      {
+        type: "explain",
+        titulo: "Aviso: é complexa",
+        texto: "A Siciliana tem MUITAS variantes — Najdorf, Dragão, Scheveningen, Sveshnikov... Para começar, recomendo: jogue a Italiana de brancas, e a Siciliana só quando for de pretas e quiser variar. Mas como Magnus Carlsen joga muito, vale conhecer.",
+      },
+      {
+        type: "explain",
+        titulo: "Pratique no Lichess",
+        texto: "No Lichess, abra uma partida e quando você for de pretas e o computador jogar 1.e4, responda com 1...c5. Veja o que acontece e use sua intuição. Errar faz parte!",
+        link: { url: "https://lichess.org/setup/ai?lang=pt-BR", label: "Praticar no Lichess" },
+      },
+      {
+        type: "complete",
+        titulo: "Aula 27 concluída! 🎉",
+        texto: "Você conheceu a Siciliana, a defesa mais popular do mundo. Próxima aula: como reproduzir no tabuleiro de verdade!",
+      },
+    ]
+  },
+
+  // ═══════════════════════ AULA 28: TABULEIRO REAL ═══════════════════════
+  {
+    n: 28, titulo: "No Tabuleiro de Verdade", subtitulo: "Como sair do celular para o jogo físico",
+    capitulo: "Pratique",
+    slides: [
+      {
+        type: "intro",
+        titulo: "Hora de pegar peças de verdade!",
+        texto: "Aprender no celular é ótimo, mas o xadrez fica MUITO MAIS GOSTOSO em um tabuleiro físico. Vamos ver como fazer essa transição.",
+      },
+      {
+        type: "explain",
+        titulo: "Onde comprar tabuleiro",
+        texto: "Tabuleiros simples custam de R$ 30 a R$ 100. Você acha em: Mercado Livre, Amazon, Shopee, livrarias maiores (Cultura, Saraiva), e algumas papelarias. Para começar, qualquer um serve — preto e branco, com peças simples.",
+      },
+      {
+        type: "explain",
+        titulo: "Lembre-se da regra de ouro",
+        texto: "Ao montar: 'casa CLARA à direita' (lembra da Aula 1?). Cada jogador deve ter uma casa clara no canto inferior direito. Se montar errado, peças vão sair erradas também!",
+      },
+      {
+        type: "explain",
+        titulo: "Posicionamento das peças",
+        texto: "Da esquerda para a direita na sua fileira de trás:\nTorre, Cavalo, Bispo, DAMA, Rei, Bispo, Cavalo, Torre.\n\nDama na sua cor (branca em casa branca, preta em preta). Rei na casa que sobra.",
+      },
+      {
+        type: "explain",
+        titulo: "Quem joga primeiro?",
+        texto: "Brancas SEMPRE começam. Para escolher quem joga de brancas, costuma-se: uma pessoa esconde 1 peão branco em uma mão e 1 preto na outra; a outra escolhe.",
+      },
+      {
+        type: "explain",
+        titulo: "Use este app no celular ao lado",
+        texto: "Truque legal: deixe este app aberto no celular ao lado do tabuleiro. Faça os puzzles aqui e RECRIE no tabuleiro real. Ajuda muito a fixar as posições.",
+      },
+      {
+        type: "explain",
+        titulo: "Convidando alguém para jogar",
+        texto: "Convide o Victor, suas amigas, vizinhos. No começo, jogue partidas SEM relógio — sem pressão de tempo. O importante é divertir e pensar com calma.",
+      },
+      {
+        type: "complete",
+        titulo: "Aula 28 concluída! 🎉",
+        texto: "Você está pronta para o tabuleiro físico! Próxima aula: como jogar online (Lichess), grátis, em português, no nível certo para iniciantes.",
+      },
+    ]
+  },
+
+  // ═══════════════════════ AULA 29: JOGAR ONLINE ═══════════════════════
+  {
+    n: 29, titulo: "Jogando no Lichess", subtitulo: "Computador no nível ideal",
+    capitulo: "Pratique",
+    slides: [
+      {
+        type: "intro",
+        titulo: "Lichess.org: melhor amigo do iniciante",
+        texto: "Lichess é um site GRATUITO, em português, sem propaganda, onde você pode jogar contra o computador no nível que quiser — do mais fácil (1) ao mais difícil (8). Recomendo começar no nível 1 ou 2.",
+        link: { url: "https://lichess.org/?lang=pt-BR", label: "Abrir Lichess.org" },
+      },
+      {
+        type: "explain",
+        titulo: "Como acessar",
+        texto: "Toque no botão dourado abaixo para abrir o Lichess agora mesmo. Ele abre numa nova aba — você pode ir e voltar entre o curso e o jogo. Não precisa criar conta para jogar.",
+        link: { url: "https://lichess.org/?lang=pt-BR", label: "Abrir Lichess.org" },
+      },
+      {
+        type: "explain",
+        titulo: "Configurando uma partida",
+        texto: "Quando o Lichess abrir:\n1) Toque em 'JOGAR' no topo\n2) Escolha 'Contra o computador'\n3) Em 'NÍVEL', escolha 1 (mais fácil)\n4) 'Tempo' — escolha 'Ilimitado' (sem pressão)\n5) Toque em 'JOGAR'",
+        link: { url: "https://lichess.org/setup/ai?lang=pt-BR", label: "Ir direto para 'Jogar contra computador'" },
+      },
+      {
+        type: "explain",
+        titulo: "Dicas para a primeira partida",
+        texto: "1) Aplique a abertura Italiana: 1.e4, 2.Cf3, 3.Bc4\n2) Faça o roque cedo\n3) Não traga a Dama no começo\n4) Pense ANTES de cada lance — qual peça pode ser capturada?\n5) Se errar, sem problema. Cada partida ensina algo.",
+      },
+      {
+        type: "explain",
+        titulo: "Use a 'análise' depois",
+        texto: "Depois de cada partida, o Lichess mostra um botão 'Análise do computador'. Ele aponta seus erros e sugere lances melhores. É como ter um professor particular grátis!",
+      },
+      {
+        type: "explain",
+        titulo: "Outros modos legais",
+        texto: "Lichess também tem:\n• Quebra-cabeças (puzzles) — milhares, no seu nível\n• Aprenda — lições interativas\n• Estudos — coleções de aberturas e finais\n\nTudo grátis.",
+        link: { url: "https://lichess.org/training?lang=pt-BR", label: "Resolver puzzles agora" },
+      },
+      {
+        type: "complete",
+        titulo: "Aula 29 concluída! 🎉",
+        texto: "Agora você sabe onde jogar de verdade! Lichess é o caminho. Última aula: encerramento e seus próximos passos.",
+      },
+    ]
+  },
+
+  // ═══════════════════════ AULA 30: ENCERRAMENTO ═══════════════════════
+  {
+    n: 30, titulo: "Sua Jornada Continua", subtitulo: "Encerramento e próximos passos",
+    capitulo: "Pratique",
+    slides: [
+      {
+        type: "intro",
+        titulo: "Você chegou ao fim do curso! 🏆",
+        texto: "30 aulas. Do tabuleiro vazio até partidas históricas. Sua dedicação me deixa muito orgulhoso. Você aprendeu uma habilidade complexa, com paciência, e agora pode jogar e se divertir pelo resto da vida.",
+      },
+      {
+        type: "explain",
+        titulo: "O que você sabe agora",
+        texto: "✓ Todas as 6 peças e seus movimentos\n✓ Capturas, xeque, xeque-mate, roque\n✓ Princípios de abertura\n✓ Táticas: garfo, cravada\n✓ Finais: Rei + Dama, Rei + Torre\n✓ Mate em 1 e mate em 2\n✓ Duas partidas históricas\n✓ Abertura Italiana e Siciliana\n✓ Como jogar real e online",
+      },
+      {
+        type: "explain",
+        titulo: "Como continuar evoluindo",
+        texto: "1) JOGUE no Lichess pelo menos 1 partida por dia\n2) Resolva 5 puzzles por dia (no Lichess, seção 'Quebra-cabeças')\n3) Veja vídeos no YouTube — canal 'Xadrez Brasil' tem partidas comentadas\n4) Convide o Victor pra jogar :)",
+        link: { url: "https://lichess.org/?lang=pt-BR", label: "Jogar no Lichess agora" },
+      },
+      {
+        type: "explain",
+        titulo: "Seu rating evoluirá com o tempo",
+        texto: "No Lichess, você ganha um 'rating' (pontuação) baseado nas partidas. Iniciantes começam em ~800. Em 6 meses jogando regularmente, você pode chegar em 1200-1400. Mas isso é DETALHE — o importante é se divertir!",
+      },
+      {
+        type: "explain",
+        titulo: "Lembre sempre",
+        texto: "Xadrez é jogo, não obrigação. Se cansar, pare e volte amanhã. Se perder, sorri e recomece. Os melhores jogadores do mundo perderam MILHARES de partidas — faz parte. O que importa é a alegria de pensar e descobrir coisas novas no tabuleiro.",
+      },
+      {
+        type: "complete",
+        titulo: "🎉 Curso concluído! 🎉",
+        texto: "Parabéns, vovó! ❤️\n\nVocê é incrível. Aprender xadrez aos 72 anos é uma das coisas mais legais que alguém pode fazer. Espero que esse curso seja só o começo de uma longa amizade com este jogo lindo.\n\nUm beijo enorme do seu filho que te ama,\nVictor",
       },
     ]
   },
 ];
-// ───────────────────────── COMPONENTE: TELA INICIAL ─────────────────────────
-function HomeScreen({ onStart, onContinue, hasProgress, completedCount, voice }) {
-  useEffect(() => {
-    voice.speak("Bem-vinda ao curso de xadrez! Toque em começar quando estiver pronta.");
-    return () => voice.stop();
-  }, []);
-
+// ───────────────────────── HEADER ─────────────────────────
+function Header({ onHome, onMenu, voiceEnabled, onToggleVoice, isMobile, currentTitle, onUnlockVoice }) {
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: C.cream, position: "relative", overflow: "hidden" }}>
-      {/* Textura decorativa */}
-      <div style={{
-        position: "absolute", inset: 0,
-        backgroundImage: `radial-gradient(circle at 20% 30%, ${C.goldBright}15 0%, transparent 50%), radial-gradient(circle at 80% 70%, ${C.moss}15 0%, transparent 50%)`,
-        pointerEvents: "none",
-      }}/>
+    <header style={{
+      backgroundColor: C.parchment,
+      borderBottom: `1px solid ${C.creamDark}`,
+      padding: isMobile ? "10px 12px" : "14px 24px",
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      position: "sticky", top: 0, zIndex: 50,
+      boxShadow: "0 1px 8px rgba(44,31,15,0.08)",
+    }}>
+      <button
+        onClick={() => { onUnlockVoice?.(); onMenu(); }}
+        style={{
+          background: "transparent", border: "none", cursor: "pointer",
+          color: C.sepiaDeep, padding: 8,
+          display: "flex", alignItems: "center", gap: 6,
+          WebkitTapHighlightColor: "transparent",
+          minWidth: 44, minHeight: 44,
+        }}
+      >
+        <Menu size={24}/>
+        {!isMobile && <span style={{ fontFamily: "Crimson Text, serif", fontSize: 16 }}>Aulas</span>}
+      </button>
 
       <div style={{
-        maxWidth: 1100, margin: "0 auto", padding: "60px 32px",
-        position: "relative", zIndex: 1,
-        display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 60, alignItems: "center",
+        flex: 1, textAlign: "center",
+        fontFamily: "Cormorant Garamond, serif",
+        color: C.ink, fontWeight: 600,
+        fontSize: isMobile ? 17 : 20,
+        padding: "0 8px",
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
-        {/* Coluna texto */}
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-        >
+        {currentTitle || "Professor de Xadrez"}
+      </div>
+
+      <button
+        onClick={() => { onUnlockVoice?.(); onToggleVoice(); }}
+        style={{
+          background: voiceEnabled ? C.moss : "transparent",
+          color: voiceEnabled ? C.cream : C.sepia,
+          border: `2px solid ${voiceEnabled ? C.moss : C.sepia}`,
+          borderRadius: 22, padding: isMobile ? "6px 10px" : "8px 14px",
+          cursor: "pointer",
+          display: "flex", alignItems: "center", gap: 6,
+          fontFamily: "Crimson Text, serif", fontSize: 13,
+          WebkitTapHighlightColor: "transparent",
+          minHeight: 40,
+        }}
+      >
+        {voiceEnabled ? <Volume2 size={16}/> : <VolumeX size={16}/>}
+        {!isMobile && (voiceEnabled ? "Voz" : "Mudo")}
+      </button>
+    </header>
+  );
+}
+
+// ───────────────────────── MODAL DE CONFIRMAÇÃO ─────────────────────────
+function ConfirmModal({ open, title, message, confirmLabel, onConfirm, onCancel }) {
+  if (!open) return null;
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0,
+        backgroundColor: "rgba(44,31,15,0.6)",
+        zIndex: 200,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 20,
+      }}
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: C.cream,
+          borderRadius: 18,
+          padding: 28,
+          maxWidth: 400, width: "100%",
+          boxShadow: "0 12px 40px rgba(44,31,15,0.4)",
+          border: `2px solid ${C.gold}`,
+        }}
+      >
+        <h3 style={{
+          fontFamily: "Cormorant Garamond, serif",
+          fontSize: 24, color: C.ink, marginTop: 0, marginBottom: 12,
+          fontWeight: 600,
+        }}>
+          {title}
+        </h3>
+        <p style={{
+          fontFamily: "Crimson Text, serif",
+          fontSize: 16, color: C.sepiaDeep,
+          lineHeight: 1.5, marginBottom: 22,
+        }}>
+          {message}
+        </p>
+        <div style={{ display: "flex", gap: 10, flexDirection: "column" }}>
+          <button
+            onClick={onConfirm}
+            style={{
+              backgroundColor: C.rose, color: C.cream,
+              border: `2px solid ${C.sepiaDeep}`,
+              borderRadius: 12, padding: "14px 18px",
+              cursor: "pointer", fontSize: 16,
+              fontFamily: "Crimson Text, serif", fontWeight: 500,
+              WebkitTapHighlightColor: "transparent",
+              minHeight: 50,
+            }}
+          >
+            {confirmLabel}
+          </button>
+          <button
+            onClick={onCancel}
+            style={{
+              backgroundColor: "transparent", color: C.sepia,
+              border: `2px solid ${C.sepia}`,
+              borderRadius: 12, padding: "14px 18px",
+              cursor: "pointer", fontSize: 16,
+              fontFamily: "Crimson Text, serif",
+              WebkitTapHighlightColor: "transparent",
+              minHeight: 50,
+            }}
+          >
+            Cancelar
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ───────────────────────── MENU LATERAL DE AULAS ─────────────────────────
+function AulasMenu({ open, onClose, aulas, progress, onSelectLesson, isMobile }) {
+  const [confirmReset, setConfirmReset] = useState(false);
+  if (!open) return null;
+  const capitulos = ["Fundamentos", "As Peças", "Básico", "Intermediário", "Avançado", "Quebra-cabeças", "Partidas Clássicas", "Aberturas", "Pratique"];
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed", inset: 0,
+          backgroundColor: "rgba(44,31,15,0.45)",
+          zIndex: 100,
+        }}
+      />
+      {/* Drawer */}
+      <motion.div
+        initial={{ x: "-100%" }}
+        animate={{ x: 0 }}
+        transition={{ type: "tween", duration: 0.25 }}
+        style={{
+          position: "fixed", top: 0, left: 0, bottom: 0,
+          width: isMobile ? "88%" : 380,
+          maxWidth: 420,
+          backgroundColor: C.cream,
+          zIndex: 101,
+          overflowY: "auto",
+          boxShadow: "4px 0 20px rgba(44,31,15,0.2)",
+          padding: 20,
+        }}
+      >
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          marginBottom: 16, paddingBottom: 12,
+          borderBottom: `1px solid ${C.creamDark}`,
+        }}>
+          <div>
+            <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: 22, color: C.ink, fontWeight: 600 }}>
+              Suas aulas
+            </div>
+            <div style={{ fontFamily: "Crimson Text, serif", fontSize: 13, color: C.sepia, fontStyle: "italic" }}>
+              {progress.completed.size} de {aulas.length} concluídas
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "transparent", border: "none", cursor: "pointer",
+              padding: 8, color: C.sepia,
+              WebkitTapHighlightColor: "transparent",
+              minWidth: 44, minHeight: 44,
+            }}
+          >
+            <X size={22}/>
+          </button>
+        </div>
+
+        {capitulos.map(cap => {
+          const lista = aulas.filter(a => a.capitulo === cap);
+          if (lista.length === 0) return null;
+          return (
+            <div key={cap} style={{ marginBottom: 22 }}>
+              <div style={{
+                fontFamily: "Cormorant Garamond, serif",
+                fontSize: 12, letterSpacing: "0.25em",
+                color: C.gold, textTransform: "uppercase",
+                marginBottom: 8, fontWeight: 600,
+              }}>
+                {cap}
+              </div>
+              {lista.map(aula => {
+                const completed = progress.isComplete(aula.n);
+                const isLast = progress.lastLesson === aula.n;
+                return (
+                  <button
+                    key={aula.n}
+                    onClick={() => { onSelectLesson(aula.n); onClose(); }}
+                    style={{
+                      width: "100%",
+                      backgroundColor: isLast ? `${C.gold}25` : (completed ? `${C.moss}15` : "transparent"),
+                      border: `1px solid ${isLast ? C.gold : (completed ? C.moss : C.creamDark)}`,
+                      borderRadius: 10, padding: "10px 12px",
+                      marginBottom: 6, cursor: "pointer",
+                      textAlign: "left",
+                      display: "flex", alignItems: "center", gap: 10,
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <div style={{
+                      minWidth: 28, height: 28, borderRadius: "50%",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 13, fontWeight: 700,
+                      backgroundColor: completed ? C.moss : C.creamDark,
+                      color: completed ? C.cream : C.sepia,
+                      fontFamily: "Crimson Text, serif",
+                    }}>
+                      {completed ? <Check size={14} strokeWidth={3}/> : aula.n}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontFamily: "Cormorant Garamond, serif", fontSize: 16,
+                        color: C.ink, fontWeight: 600,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {aula.titulo}
+                      </div>
+                      <div style={{
+                        fontFamily: "Crimson Text, serif", fontSize: 12,
+                        color: C.sepia, fontStyle: "italic",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {aula.subtitulo}
+                      </div>
+                    </div>
+                    {isLast && (
+                      <div style={{
+                        fontSize: 10, fontWeight: 600,
+                        color: C.gold, fontFamily: "Crimson Text, serif",
+                        letterSpacing: "0.1em",
+                      }}>
+                        AQUI
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+
+        {progress.completed.size > 0 && (
+          <button
+            onClick={() => setConfirmReset(true)}
+            style={{
+              width: "100%", marginTop: 8,
+              background: "transparent",
+              border: `1px solid ${C.rose}`,
+              color: C.rose,
+              borderRadius: 10, padding: "10px",
+              cursor: "pointer",
+              fontFamily: "Crimson Text, serif", fontSize: 13,
+              WebkitTapHighlightColor: "transparent",
+              minHeight: 44,
+            }}
+          >
+            Apagar progresso
+          </button>
+        )}
+
+        {/* Botão fixo: Jogar no Lichess */}
+        <div style={{
+          marginTop: 24, paddingTop: 20,
+          borderTop: `1px solid ${C.creamDark}`,
+        }}>
           <div style={{
-            fontSize: 14, letterSpacing: "0.3em", color: C.gold,
+            fontFamily: "Cormorant Garamond, serif",
+            fontSize: 12, letterSpacing: "0.25em",
+            color: C.gold, textTransform: "uppercase",
+            marginBottom: 10, fontWeight: 600,
+          }}>
+            Jogar de verdade
+          </div>
+          <a
+            href="https://lichess.org/?lang=pt-BR"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              backgroundColor: C.gold, color: C.ink,
+              border: `2px solid ${C.sepiaDeep}`,
+              borderRadius: 12, padding: "12px",
+              textDecoration: "none",
+              fontSize: 15, fontFamily: "Crimson Text, serif", fontWeight: 600,
+              WebkitTapHighlightColor: "transparent",
+              minHeight: 48,
+            }}
+          >
+            <ExternalLink size={16}/>
+            Jogar no Lichess
+          </a>
+          <div style={{
+            marginTop: 6, textAlign: "center",
+            fontSize: 11, fontFamily: "Crimson Text, serif",
+            color: C.sepia, fontStyle: "italic",
+          }}>
+            Grátis, em português
+          </div>
+        </div>
+      </motion.div>
+      <ConfirmModal
+        open={confirmReset}
+        title="Apagar todo o progresso?"
+        message="Você vai perder o registro de aulas concluídas e o slide onde estava. Isto não pode ser desfeito."
+        confirmLabel="Sim, apagar tudo"
+        onConfirm={() => {
+          progress.reset();
+          setConfirmReset(false);
+          onClose();
+        }}
+        onCancel={() => setConfirmReset(false)}
+      />
+    </>
+  );
+}
+
+// ───────────────────────── TELA INICIAL ─────────────────────────
+function HomeScreen({ onStart, onContinue, hasProgress, completedCount, isMobile, voice }) {
+  return (
+    <div style={{
+      minHeight: "100vh",
+      backgroundColor: C.cream,
+      backgroundImage: `radial-gradient(circle at 20% 30%, ${C.goldBright}15 0%, transparent 50%), radial-gradient(circle at 80% 70%, ${C.moss}15 0%, transparent 50%)`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: isMobile ? "32px 20px" : "60px 32px",
+    }}>
+      <div style={{
+        maxWidth: 1100, width: "100%",
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "1.1fr 0.9fr",
+        gap: isMobile ? 32 : 60,
+        alignItems: "center",
+      }}>
+        <div style={{ textAlign: isMobile ? "center" : "left" }}>
+          <div style={{
+            fontSize: 12, letterSpacing: "0.3em", color: C.gold,
             fontFamily: "Crimson Text, serif", marginBottom: 12,
             textTransform: "uppercase",
           }}>
-            ✦ Curso completo em 20 aulas ✦
+            ✦ Curso completo em 30 aulas ✦
           </div>
           <h1 style={{
-            fontSize: 76, lineHeight: 0.95, color: C.ink,
+            fontSize: isMobile ? 48 : 72, lineHeight: 0.95, color: C.ink,
             fontFamily: "Cormorant Garamond, serif", fontWeight: 600,
-            marginBottom: 24, letterSpacing: "-0.02em",
+            marginBottom: 20, letterSpacing: "-0.02em", marginTop: 0,
           }}>
-            Xadrez<br/>
-            <span style={{ fontStyle: "italic", color: C.moss }}>com carinho</span>
+            Professor<br/>
+            <span style={{ fontStyle: "italic", color: C.moss }}>de Xadrez</span>
           </h1>
           <p style={{
-            fontSize: 22, lineHeight: 1.55, color: C.sepiaDeep,
-            fontFamily: "Crimson Text, serif", marginBottom: 36,
-            maxWidth: 480,
+            fontSize: isMobile ? 17 : 20, lineHeight: 1.5, color: C.sepiaDeep,
+            fontFamily: "Crimson Text, serif", marginBottom: 28,
+            maxWidth: 480, marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
           }}>
-            Um curso pensado com calma. Do tabuleiro ao xeque-mate, em 20 aulas curtas e visuais. Sem pressa, sem complicação.
+            Um curso pensado com calma. Do tabuleiro ao xeque-mate, em 30 aulas curtas e visuais. Sem pressa, sem complicação.
           </p>
 
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <BigButton variant="primary" onClick={onStart} icon={<Play size={22}/>}>
-              Começar do início
-            </BigButton>
-            {hasProgress && (
-              <BigButton variant="gold" onClick={onContinue} icon={<ChevronRight size={22}/>}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: isMobile ? "center" : "flex-start" }}>
+            {hasProgress ? (
+              <BigButton variant="gold" onClick={() => { voice.unlock(); onContinue(); }} icon={<Play size={20}/>}>
                 Continuar de onde parei
+              </BigButton>
+            ) : (
+              <BigButton variant="primary" onClick={() => { voice.unlock(); onStart(); }} icon={<Play size={20}/>}>
+                Começar do início
+              </BigButton>
+            )}
+            {hasProgress && (
+              <BigButton variant="secondary" onClick={() => { voice.unlock(); onStart(); }} icon={<BookOpen size={20}/>}>
+                Ver todas as aulas
               </BigButton>
             )}
           </div>
 
           {hasProgress && (
             <div style={{
-              marginTop: 32,
-              fontSize: 16, color: C.sepia,
+              marginTop: 24,
+              fontSize: 14, color: C.sepia,
               fontFamily: "Crimson Text, serif",
               fontStyle: "italic",
             }}>
-              ✓ Você já completou {completedCount} {completedCount === 1 ? "aula" : "aulas"}
+              ✓ Você já completou {completedCount} {completedCount === 1 ? "aula" : "aulas"} de 30
             </div>
           )}
-        </motion.div>
+        </div>
 
-        {/* Coluna ilustração — mini tabuleiro decorativo */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
-          animate={{ opacity: 1, scale: 1, rotate: -3 }}
-          transition={{ duration: 1, delay: 0.3 }}
-          style={{ display: "flex", justifyContent: "center" }}
-        >
-          <div style={{ position: "relative" }}>
-            <ChessBoard
-              board={bd({ d4: "wQ", e5: "bK", h8: "bR", a1: "wK", c6: "wN", f3: "wB" })}
-              size={400}
-              interactive={false}
-              showCoordinates={false}
-              arrows={[arrow("c6", "e5", C.gold), arrow("c6", "d4", C.gold)]}
-            />
-            {/* Selo decorativo */}
-            <div style={{
-              position: "absolute", bottom: -20, right: -20,
-              width: 100, height: 100, borderRadius: "50%",
-              background: `linear-gradient(135deg, ${C.gold}, ${C.goldBright})`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 8px 20px rgba(184,148,90,0.4)",
-              transform: "rotate(15deg)",
-              border: `3px solid ${C.cream}`,
-            }}>
-              <div style={{ textAlign: "center", color: C.ink, fontFamily: "Cormorant Garamond, serif" }}>
-                <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1 }}>20</div>
-                <div style={{ fontSize: 11, letterSpacing: "0.1em" }}>AULAS</div>
+        {!isMobile && (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{ position: "relative", transform: "rotate(-3deg)" }}>
+              <ChessBoard
+                board={bd({ d4: "wQ", e5: "bK", h8: "bR", a1: "wK", c6: "wN", f3: "wB" })}
+                size={380}
+                interactive={false}
+                showCoordinates={false}
+                arrows={[arrow("c6", "e5", C.gold), arrow("c6", "d4", C.gold)]}
+              />
+              <div style={{
+                position: "absolute", bottom: -16, right: -16,
+                width: 92, height: 92, borderRadius: "50%",
+                background: `linear-gradient(135deg, ${C.gold}, ${C.goldBright})`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 8px 20px rgba(184,148,90,0.4)",
+                transform: "rotate(15deg)",
+                border: `3px solid ${C.cream}`,
+              }}>
+                <div style={{ textAlign: "center", color: C.ink, fontFamily: "Cormorant Garamond, serif" }}>
+                  <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1 }}>30</div>
+                  <div style={{ fontSize: 10, letterSpacing: "0.1em" }}>AULAS</div>
+                </div>
               </div>
             </div>
           </div>
-        </motion.div>
-      </div>
-
-      {/* Rodapé */}
-      <div style={{
-        position: "absolute", bottom: 24, left: 0, right: 0,
-        textAlign: "center", color: C.sepia, fontSize: 13,
-        fontFamily: "Crimson Text, serif", fontStyle: "italic",
-        opacity: 0.7,
-      }}>
-        Feito com carinho pelo Victor • Para a melhor mãe do mundo
+        )}
       </div>
     </div>
   );
 }
+// ───────────────────────── QUIZ ─────────────────────────
+function QuizBlock({ pergunta, opcoes, correta, explicacao, slideIdx, answered, onAnswer, voice }) {
+  const [selected, setSelected] = useState(null);
+  const [showExplanation, setShowExplanation] = useState(false);
 
-// ───────────────────────── COMPONENTE: MAPA DE AULAS ─────────────────────────
-function LessonMap({ aulas, progress, onSelectLesson, onHome }) {
-  const capitulos = ["Fundamentos", "As Peças", "Básico", "Intermediário", "Avançado"];
-  const aulasPorCapitulo = capitulos.map(cap => ({
-    nome: cap,
-    aulas: aulas.filter(a => a.capitulo === cap),
-  }));
-
-  return (
-    <div style={{ minHeight: "100vh", backgroundColor: C.cream, padding: "32px 32px 80px" }}>
-      {/* Topbar */}
-      <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        marginBottom: 40, maxWidth: 1100, margin: "0 auto 40px",
-      }}>
-        <button
-          onClick={onHome}
-          style={{
-            background: "transparent", border: "none", cursor: "pointer",
-            display: "flex", alignItems: "center", gap: 8,
-            color: C.sepia, fontSize: 16, fontFamily: "Crimson Text, serif",
-          }}
-        >
-          <Home size={18}/> Início
-        </button>
-        <div style={{
-          fontFamily: "Cormorant Garamond, serif", fontSize: 18, color: C.sepiaDeep,
-          fontStyle: "italic",
-        }}>
-          {progress.completed.size} de {aulas.length} aulas concluídas
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <h1 style={{
-          fontFamily: "Cormorant Garamond, serif", fontSize: 56, color: C.ink,
-          marginBottom: 8, fontWeight: 600,
-        }}>
-          Suas <span style={{ fontStyle: "italic", color: C.moss }}>aulas</span>
-        </h1>
-        <p style={{ fontFamily: "Crimson Text, serif", fontSize: 18, color: C.sepia, marginBottom: 48 }}>
-          Cada aula leva cerca de 30 minutos. Pode pausar e voltar quando quiser.
-        </p>
-
-        {aulasPorCapitulo.map((cap, ci) => (
-          <div key={cap.nome} style={{ marginBottom: 48 }}>
-            <div style={{
-              fontFamily: "Cormorant Garamond, serif",
-              fontSize: 14, letterSpacing: "0.3em",
-              color: C.gold, textTransform: "uppercase",
-              marginBottom: 16, fontWeight: 600,
-            }}>
-              ✦ {cap.nome} ✦
-            </div>
-            <div style={{
-              display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-              gap: 20,
-            }}>
-              {cap.aulas.map(aula => {
-                const completed = progress.isComplete(aula.n);
-                const unlocked = progress.isUnlocked(aula.n);
-                return (
-                  <motion.div
-                    key={aula.n}
-                    whileHover={unlocked ? { y: -4, boxShadow: "0 12px 30px rgba(44,31,15,0.15)" } : {}}
-                    onClick={() => unlocked && onSelectLesson(aula.n)}
-                    style={{
-                      backgroundColor: completed ? C.creamDark : C.parchment,
-                      border: `2px solid ${completed ? C.moss : (unlocked ? C.sepia : C.creamDark)}`,
-                      borderRadius: 16,
-                      padding: 24,
-                      cursor: unlocked ? "pointer" : "not-allowed",
-                      opacity: unlocked ? 1 : 0.55,
-                      position: "relative",
-                      transition: "border-color 0.2s",
-                    }}
-                  >
-                    <div style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-                      marginBottom: 8,
-                    }}>
-                      <div style={{
-                        fontFamily: "Cormorant Garamond, serif", fontSize: 14,
-                        color: C.gold, letterSpacing: "0.15em",
-                      }}>
-                        AULA {String(aula.n).padStart(2, "0")}
-                      </div>
-                      {completed && (
-                        <div style={{
-                          width: 28, height: 28, borderRadius: "50%",
-                          backgroundColor: C.moss, display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          <Check size={16} color={C.cream} strokeWidth={3}/>
-                        </div>
-                      )}
-                      {!unlocked && (
-                        <Lock size={20} color={C.sepia}/>
-                      )}
-                    </div>
-                    <h3 style={{
-                      fontFamily: "Cormorant Garamond, serif", fontSize: 24,
-                      color: C.ink, fontWeight: 600, marginBottom: 4,
-                    }}>
-                      {aula.titulo}
-                    </h3>
-                    <p style={{
-                      fontFamily: "Crimson Text, serif", fontSize: 15,
-                      color: C.sepia, fontStyle: "italic",
-                    }}>
-                      {aula.subtitulo}
-                    </p>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-// ───────────────────────── COMPONENTE: PLAYER DE AULA ─────────────────────────
-function LessonPlayer({ aula, onComplete, onExit, voice }) {
-  const [slideIdx, setSlideIdx] = useState(0);
-  const [quizAnswered, setQuizAnswered] = useState({});
-  const [practiceCompleted, setPracticeCompleted] = useState({});
-  const slide = aula.slides[slideIdx];
-  const isLast = slideIdx === aula.slides.length - 1;
-
-  // Auto-fala o texto principal ao entrar no slide
+  // Reset ao trocar de slide
   useEffect(() => {
-    if (slide.texto && voice.enabled) {
-      voice.speak(slide.texto);
-    }
-    return () => voice.stop();
+    setSelected(null);
+    setShowExplanation(false);
   }, [slideIdx]);
 
-  const goNext = () => {
-    if (slideIdx < aula.slides.length - 1) {
-      setSlideIdx(slideIdx + 1);
-    } else {
-      onComplete();
+  // Se já tinha sido respondido (vindo do progresso), mostra explicação
+  useEffect(() => {
+    if (answered) {
+      setShowExplanation(true);
+      setSelected(correta);
     }
-  };
-  const goPrev = () => slideIdx > 0 && setSlideIdx(slideIdx - 1);
-
-  const canAdvance = () => {
-    if (slide.type === "quiz") return quizAnswered[slideIdx] === true;
-    if (slide.type === "practice") return practiceCompleted[slideIdx] === true;
-    return true;
-  };
-
-  const progress = ((slideIdx + 1) / aula.slides.length) * 100;
-
-  return (
-    <div style={{ minHeight: "100vh", backgroundColor: C.cream, display: "flex", flexDirection: "column" }}>
-      {/* Topbar */}
-      <div style={{
-        backgroundColor: C.parchment, borderBottom: `1px solid ${C.creamDark}`,
-        padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <button onClick={onExit} style={{
-          background: "transparent", border: "none", cursor: "pointer",
-          color: C.sepia, fontSize: 15, fontFamily: "Crimson Text, serif",
-          display: "flex", alignItems: "center", gap: 6,
-        }}>
-          <ChevronLeft size={18}/> Sair da aula
-        </button>
-        <div style={{ textAlign: "center", flex: 1 }}>
-          <div style={{
-            fontFamily: "Cormorant Garamond, serif", fontSize: 13,
-            color: C.gold, letterSpacing: "0.2em",
-          }}>
-            AULA {aula.n} · {aula.capitulo.toUpperCase()}
-          </div>
-          <div style={{
-            fontFamily: "Cormorant Garamond, serif", fontSize: 22,
-            color: C.ink, fontWeight: 600,
-          }}>
-            {aula.titulo}
-          </div>
-        </div>
-        <button
-          onClick={() => voice.setEnabled(!voice.enabled)}
-          style={{
-            background: voice.enabled ? C.moss : "transparent",
-            color: voice.enabled ? C.cream : C.sepia,
-            border: `2px solid ${voice.enabled ? C.moss : C.sepia}`,
-            borderRadius: 24, padding: "8px 16px", cursor: "pointer",
-            display: "flex", alignItems: "center", gap: 6,
-            fontFamily: "Crimson Text, serif", fontSize: 14,
-          }}
-        >
-          {voice.enabled ? <Volume2 size={16}/> : <VolumeX size={16}/>}
-          {voice.enabled ? "Voz ligada" : "Voz desligada"}
-        </button>
-      </div>
-
-      {/* Barra de progresso */}
-      <div style={{ height: 4, backgroundColor: C.creamDark, position: "relative" }}>
-        <motion.div
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.4 }}
-          style={{
-            position: "absolute", left: 0, top: 0, bottom: 0,
-            background: `linear-gradient(90deg, ${C.moss}, ${C.gold})`,
-          }}
-        />
-      </div>
-
-      {/* Slide */}
-      <div style={{
-        flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 40,
-      }}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={slideIdx}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4 }}
-            style={{
-              maxWidth: 1100, width: "100%",
-              display: "grid",
-              gridTemplateColumns: slide.board ? "1fr 1fr" : "1fr",
-              gap: 48, alignItems: "center",
-            }}
-          >
-            {/* Coluna texto */}
-            <div>
-              {slide.type === "intro" && (
-                <div style={{
-                  fontSize: 14, letterSpacing: "0.3em", color: C.gold,
-                  fontFamily: "Crimson Text, serif", marginBottom: 12,
-                  textTransform: "uppercase",
-                }}>
-                  ✦ Início da aula
-                </div>
-              )}
-              {slide.type === "complete" && (
-                <div style={{
-                  fontSize: 14, letterSpacing: "0.3em", color: C.moss,
-                  fontFamily: "Crimson Text, serif", marginBottom: 12,
-                  textTransform: "uppercase",
-                }}>
-                  ✦ Aula concluída
-                </div>
-              )}
-              <h2 style={{
-                fontFamily: "Cormorant Garamond, serif",
-                fontSize: 44, color: C.ink, lineHeight: 1.1,
-                marginBottom: 20, fontWeight: 600,
-              }}>
-                {slide.titulo}
-              </h2>
-
-              {slide.bigPiece && (
-                <div style={{
-                  display: "inline-flex", marginBottom: 24,
-                  padding: 24, backgroundColor: C.parchment,
-                  borderRadius: 16, border: `2px solid ${C.gold}`,
-                }}>
-                  <PieceSvg type={slide.bigPiece.type} color={slide.bigPiece.color} size={120}/>
-                </div>
-              )}
-
-              {slide.texto && (
-                <p style={{
-                  fontFamily: "Crimson Text, serif",
-                  fontSize: 22, lineHeight: 1.6, color: C.sepiaDeep,
-                  whiteSpace: "pre-wrap",
-                }}>
-                  {slide.texto}
-                </p>
-              )}
-
-              {/* Quiz */}
-              {slide.type === "quiz" && (
-                <QuizBlock
-                  pergunta={slide.pergunta}
-                  opcoes={slide.opcoes}
-                  correta={slide.correta}
-                  explicacao={slide.explicacao}
-                  answered={quizAnswered[slideIdx]}
-                  onAnswer={(correct) => {
-                    if (correct) setQuizAnswered({ ...quizAnswered, [slideIdx]: true });
-                  }}
-                  voice={voice}
-                />
-              )}
-
-              {/* Botão "ouvir de novo" */}
-              {voice.enabled && slide.texto && (
-                <button
-                  onClick={() => voice.speak(slide.texto)}
-                  style={{
-                    marginTop: 24, background: "transparent",
-                    border: `1px solid ${C.sepia}`, borderRadius: 24,
-                    padding: "8px 20px", cursor: "pointer",
-                    color: C.sepia, fontSize: 14, fontFamily: "Crimson Text, serif",
-                    display: "inline-flex", alignItems: "center", gap: 8,
-                  }}
-                >
-                  <Volume2 size={14}/> Ouvir explicação de novo
-                </button>
-              )}
-            </div>
-
-            {/* Coluna tabuleiro (se houver) */}
-            {slide.board && (
-              <div style={{ display: "flex", justifyContent: "center" }}>
-                <PracticeBoard
-                  slide={slide}
-                  slideIdx={slideIdx}
-                  onComplete={() => setPracticeCompleted({ ...practiceCompleted, [slideIdx]: true })}
-                  completed={practiceCompleted[slideIdx]}
-                />
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* Controles inferior */}
-      <div style={{
-        backgroundColor: C.parchment, borderTop: `1px solid ${C.creamDark}`,
-        padding: "20px 32px", display: "flex", justifyContent: "space-between", alignItems: "center",
-      }}>
-        <button
-          onClick={goPrev}
-          disabled={slideIdx === 0}
-          style={{
-            background: "transparent", border: `2px solid ${C.sepia}`,
-            borderRadius: 12, padding: "12px 24px",
-            cursor: slideIdx === 0 ? "not-allowed" : "pointer",
-            color: C.sepia, fontSize: 16, fontFamily: "Crimson Text, serif",
-            opacity: slideIdx === 0 ? 0.4 : 1,
-            display: "flex", alignItems: "center", gap: 8,
-          }}
-        >
-          <ChevronLeft size={18}/> Anterior
-        </button>
-
-        <div style={{
-          fontFamily: "Crimson Text, serif", color: C.sepia, fontSize: 14,
-        }}>
-          {slideIdx + 1} de {aula.slides.length}
-        </div>
-
-        <BigButton
-          onClick={goNext}
-          disabled={!canAdvance()}
-          variant={isLast ? "gold" : "primary"}
-          icon={isLast ? <Award size={20}/> : <ChevronRight size={20}/>}
-        >
-          {isLast ? "Concluir aula" : "Próximo"}
-        </BigButton>
-      </div>
-    </div>
-  );
-}
-
-// ───────────────────────── QUIZ ─────────────────────────
-function QuizBlock({ pergunta, opcoes, correta, explicacao, answered, onAnswer, voice }) {
-  const [selected, setSelected] = useState(null);
+  }, [answered, correta]);
 
   function handleClick(i) {
-    if (answered) return;
+    if (showExplanation) return;
     setSelected(i);
+    setShowExplanation(true);
     const isCorrect = i === correta;
     if (isCorrect) {
       voice.speak(explicacao);
+      onAnswer(true);
     } else {
-      voice.speak("Quase! Tente novamente.");
+      voice.speak("Não foi essa. Olhe de novo e clique na resposta certa.");
+      // Não trava - permite tentar de novo
+      setTimeout(() => {
+        setShowExplanation(false);
+        setSelected(null);
+      }, 2000);
     }
-    onAnswer(isCorrect);
   }
 
   return (
     <div style={{
-      marginTop: 24, padding: 24,
-      backgroundColor: C.parchment, borderRadius: 16,
+      marginTop: 20, padding: 20,
+      backgroundColor: C.parchment, borderRadius: 14,
       border: `2px solid ${C.gold}`,
     }}>
       <div style={{
-        fontFamily: "Cormorant Garamond, serif", fontSize: 20,
-        color: C.ink, marginBottom: 16, fontWeight: 600,
+        fontFamily: "Cormorant Garamond, serif", fontSize: 19,
+        color: C.ink, marginBottom: 14, fontWeight: 600,
       }}>
         {pergunta}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {opcoes.map((op, i) => {
           const isSelected = selected === i;
-          const showResult = isSelected && answered !== undefined;
           const isCorrect = i === correta;
+          const showResult = showExplanation && isSelected;
           return (
-            <motion.button
+            <button
               key={i}
               onClick={() => handleClick(i)}
-              whileHover={!answered ? { x: 6 } : {}}
               style={{
-                padding: "14px 20px", borderRadius: 12,
+                padding: "13px 16px", borderRadius: 10,
                 border: `2px solid ${
                   showResult ? (isCorrect ? C.moss : C.rose) :
-                  (selected === i ? C.gold : C.creamDark)
+                  (isSelected ? C.gold : C.creamDark)
                 }`,
-                backgroundColor: showResult ? (isCorrect ? `${C.moss}20` : `${C.rose}20`) : C.cream,
-                color: C.sepiaDeep, fontSize: 16,
+                backgroundColor: showResult
+                  ? (isCorrect ? `${C.moss}25` : `${C.rose}25`)
+                  : C.cream,
+                color: C.sepiaDeep, fontSize: 15,
                 fontFamily: "Crimson Text, serif",
-                cursor: answered ? "default" : "pointer",
+                cursor: "pointer",
                 textAlign: "left",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
+                display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+                lineHeight: 1.4,
+                WebkitTapHighlightColor: "transparent",
+                minHeight: 48,
               }}
             >
               <span>{op}</span>
-              {showResult && isCorrect && <Check size={18} color={C.moss}/>}
-            </motion.button>
+              {showResult && isCorrect && <Check size={18} color={C.moss} strokeWidth={3}/>}
+              {showResult && !isCorrect && <X size={18} color={C.rose} strokeWidth={3}/>}
+            </button>
           );
         })}
       </div>
-      {answered && (
+      {showExplanation && answered && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
           style={{
-            marginTop: 16, padding: 14,
-            backgroundColor: `${C.moss}15`, borderRadius: 10,
-            fontFamily: "Crimson Text, serif", fontSize: 15,
+            marginTop: 14, padding: 12,
+            backgroundColor: `${C.moss}15`, borderRadius: 8,
+            fontFamily: "Crimson Text, serif", fontSize: 14,
             color: C.sepiaDeep, fontStyle: "italic",
+            lineHeight: 1.5,
           }}
         >
           ✓ {explicacao}
@@ -2321,30 +2833,37 @@ function QuizBlock({ pergunta, opcoes, correta, explicacao, answered, onAnswer, 
   );
 }
 
-// ───────────────────────── TABULEIRO DE PRÁTICA/EXPLICAÇÃO ─────────────────────────
-function PracticeBoard({ slide, slideIdx, onComplete, completed }) {
+// ───────────────────────── TABULEIRO DE PRÁTICA ─────────────────────────
+function PracticeBoard({ slide, slideIdx, onComplete, completed, isMobile, viewport }) {
   const [board, setBoard] = useState(slide.board);
   const [feedback, setFeedback] = useState(null);
 
+  // Tamanho calculado: cabe no celular sem cortar
+  const boardSize = useMemo(() => {
+    const w = viewport.w;
+    if (w < 380) return Math.min(280, w - 50);
+    if (w < 500) return Math.min(320, w - 50);
+    if (w < 760) return 360;
+    if (w < 1024) return 400;
+    return 440;
+  }, [viewport.w]);
+
+  // Reset ao mudar slide
   useEffect(() => {
     setBoard(slide.board);
     setFeedback(null);
   }, [slideIdx]);
 
   function handleMove({ from, to, piece }) {
+    const newBoard = board.map(row => [...row]);
+    newBoard[to[0]][to[1]] = piece;
+    newBoard[from[0]][from[1]] = null;
+
     if (slide.type !== "practice") {
-      // Lição explicativa: só permite ver movimentos, não muda o estado
-      const newBoard = board.map(row => [...row]);
-      newBoard[to[0]][to[1]] = piece;
-      newBoard[from[0]][from[1]] = null;
       setBoard(newBoard);
       return;
     }
 
-    // Prática: verifica objetivo
-    const newBoard = board.map(row => [...row]);
-    newBoard[to[0]][to[1]] = piece;
-    newBoard[from[0]][from[1]] = null;
     setBoard(newBoard);
 
     if (slide.objetivo === "any") {
@@ -2354,7 +2873,6 @@ function PracticeBoard({ slide, slideIdx, onComplete, completed }) {
     }
     if (slide.objetivo === "promote") {
       if (to[0] === 0 && piece.type === "P") {
-        // Promove
         newBoard[to[0]][to[1]] = { type: "Q", color: "w" };
         setBoard(newBoard);
         setFeedback({ type: "success", text: "🎉 Promoção! Seu peão virou Dama!" });
@@ -2369,10 +2887,16 @@ function PracticeBoard({ slide, slideIdx, onComplete, completed }) {
     const [tFromR, tFromC] = parseSquare(target.from);
     const [tToR, tToC] = parseSquare(target.to);
     if (from[0] === tFromR && from[1] === tFromC && to[0] === tToR && to[1] === tToC) {
-      setFeedback({ type: "success", text: "✓ Perfeito! Lance correto!" });
+      const text = slide.explicacaoPosMate || "Perfeito! Lance correto!";
+      setFeedback({ type: "success", text: "✓ " + text });
       onComplete();
     } else {
-      setFeedback({ type: "error", text: "Quase! Tente outra casa. Dica: o objetivo está marcado em verde." });
+      setFeedback({ type: "error", text: "Quase! A casa correta está marcada em verde. Tente novamente." });
+      // Reseta o tabuleiro depois de um tempo para a pessoa tentar de novo
+      setTimeout(() => {
+        setBoard(slide.board);
+        setFeedback(null);
+      }, 1800);
     }
   }
 
@@ -2381,21 +2905,20 @@ function PracticeBoard({ slide, slideIdx, onComplete, completed }) {
     setFeedback(null);
   }
 
-  // Se for objetivo específico, marca a casa de destino em verde como dica
   let extraHighlights = slide.highlights || [];
   if (slide.type === "practice" && slide.objetivo && typeof slide.objetivo === "object" && !completed) {
     extraHighlights = [...extraHighlights, parseSquare(slide.objetivo.to)];
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
       <ChessBoard
         board={board}
         onMove={handleMove}
         highlights={extraHighlights}
         arrows={slide.arrows || []}
         showCoordinates={slide.showCoordinates !== false}
-        size={440}
+        size={boardSize}
         interactive={true}
         highlightedPiece={slide.highlightedPiece}
         showLastMove={slide.showLastMove}
@@ -2403,15 +2926,17 @@ function PracticeBoard({ slide, slideIdx, onComplete, completed }) {
 
       {feedback && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
           style={{
-            padding: "12px 20px", borderRadius: 12,
+            padding: "10px 16px", borderRadius: 10,
             backgroundColor: feedback.type === "success" ? `${C.moss}25`
                          : feedback.type === "error" ? `${C.rose}25` : `${C.gold}25`,
             border: `2px solid ${feedback.type === "success" ? C.moss
                               : feedback.type === "error" ? C.rose : C.gold}`,
-            fontFamily: "Crimson Text, serif", fontSize: 16,
-            color: C.sepiaDeep, textAlign: "center", maxWidth: 400,
+            fontFamily: "Crimson Text, serif", fontSize: 14,
+            color: C.sepiaDeep, textAlign: "center",
+            maxWidth: boardSize + 20,
+            lineHeight: 1.4,
           }}
         >
           {feedback.text}
@@ -2423,98 +2948,588 @@ function PracticeBoard({ slide, slideIdx, onComplete, completed }) {
           onClick={reset}
           style={{
             background: "transparent", border: `1px solid ${C.sepia}`,
-            borderRadius: 20, padding: "6px 16px", cursor: "pointer",
-            color: C.sepia, fontSize: 13, fontFamily: "Crimson Text, serif",
+            borderRadius: 18, padding: "6px 14px", cursor: "pointer",
+            color: C.sepia, fontSize: 12, fontFamily: "Crimson Text, serif",
             display: "flex", alignItems: "center", gap: 6,
+            WebkitTapHighlightColor: "transparent",
           }}
         >
-          <RotateCcw size={14}/> Recomeçar
+          <RotateCcw size={12}/> Recomeçar
         </button>
       )}
     </div>
   );
 }
 
-// ───────────────────────── APP PRINCIPAL ─────────────────────────
-const TODAS_AULAS = [...AULAS, ...AULAS_6_15, ...AULAS_16_20];
+// ───────────────────────── PLAYER DE AULA ─────────────────────────
+// ───────────────────────── GAME REPLAY ─────────────────────────
+// Mostra uma partida lance a lance, com play/pause e setas manuais.
+// Slide deve ter: { type: "gameReplay", title, intro, moves: [{ board, comment, arrows?, lastMove? }] }
+function GameReplay({ slide, slideIdx, isMobile, viewport, voice }) {
+  const [moveIdx, setMoveIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const moves = slide.moves || [];
+  const move = moves[moveIdx] || moves[0];
+  const isLastMove = moveIdx === moves.length - 1;
 
+  const boardSize = useMemo(() => {
+    const w = viewport.w;
+    if (w < 380) return Math.min(280, w - 50);
+    if (w < 500) return Math.min(320, w - 50);
+    if (w < 760) return 360;
+    if (w < 1024) return 400;
+    return 440;
+  }, [viewport.w]);
+
+  // Reset quando muda de slide
+  useEffect(() => {
+    setMoveIdx(0);
+    setPlaying(false);
+  }, [slideIdx]);
+
+  // Lê comentário do lance ao avançar
+  useEffect(() => {
+    if (move?.comment) voice.speak(move.comment);
+  }, [moveIdx, slideIdx]);
+
+  // Auto-avanço quando playing
+  useEffect(() => {
+    if (!playing) return;
+    if (isLastMove) {
+      setPlaying(false);
+      return;
+    }
+    const t = setTimeout(() => {
+      setMoveIdx(prev => prev + 1);
+    }, 4500); // 4.5s por lance — tempo pra ler/ouvir
+    return () => clearTimeout(t);
+  }, [playing, moveIdx, isLastMove]);
+
+  const goPrev = () => { setPlaying(false); setMoveIdx(Math.max(0, moveIdx - 1)); };
+  const goNext = () => { setPlaying(false); setMoveIdx(Math.min(moves.length - 1, moveIdx + 1)); };
+  const goStart = () => { setPlaying(false); setMoveIdx(0); };
+  const togglePlay = () => {
+    if (isLastMove) {
+      setMoveIdx(0);
+      setPlaying(true);
+    } else {
+      setPlaying(!playing);
+    }
+  };
+
+  if (!move) return null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, width: "100%" }}>
+      <ChessBoard
+        board={move.board}
+        size={boardSize}
+        interactive={false}
+        showCoordinates={true}
+        arrows={move.arrows || []}
+        showLastMove={move.lastMove}
+        highlightedPiece={move.highlight}
+      />
+
+      {/* Comentário do lance atual */}
+      <div style={{
+        backgroundColor: C.parchment,
+        border: `2px solid ${C.gold}`,
+        borderRadius: 12, padding: "12px 16px",
+        maxWidth: boardSize + 20, width: "100%",
+      }}>
+        <div style={{
+          fontFamily: "Cormorant Garamond, serif",
+          fontSize: 13, color: C.gold,
+          letterSpacing: "0.15em", fontWeight: 600,
+          marginBottom: 4,
+        }}>
+          LANCE {moveIdx + 1} DE {moves.length}{move.label ? ` · ${move.label}` : ""}
+        </div>
+        <div style={{
+          fontFamily: "Crimson Text, serif",
+          fontSize: 15, color: C.sepiaDeep,
+          lineHeight: 1.5,
+        }}>
+          {move.comment}
+        </div>
+      </div>
+
+      {/* Controles do replay */}
+      <div style={{
+        display: "flex", gap: 8, alignItems: "center",
+        flexWrap: "wrap", justifyContent: "center",
+      }}>
+        <button
+          onClick={goStart}
+          aria-label="Voltar ao início"
+          style={{
+            backgroundColor: "transparent",
+            border: `2px solid ${C.sepia}`,
+            borderRadius: 12, padding: 10,
+            cursor: "pointer", color: C.sepia,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            WebkitTapHighlightColor: "transparent",
+            minWidth: 44, minHeight: 44,
+          }}
+        >
+          <SkipBack size={18}/>
+        </button>
+        <button
+          onClick={goPrev}
+          disabled={moveIdx === 0}
+          aria-label="Lance anterior"
+          style={{
+            backgroundColor: "transparent",
+            border: `2px solid ${moveIdx === 0 ? C.creamDark : C.sepia}`,
+            borderRadius: 12, padding: 10,
+            cursor: moveIdx === 0 ? "not-allowed" : "pointer",
+            color: moveIdx === 0 ? C.creamDark : C.sepia,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            WebkitTapHighlightColor: "transparent",
+            minWidth: 44, minHeight: 44,
+          }}
+        >
+          <ChevronLeft size={20}/>
+        </button>
+        <button
+          onClick={togglePlay}
+          aria-label={playing ? "Pausar" : "Tocar"}
+          style={{
+            backgroundColor: C.moss, color: C.cream,
+            border: `2px solid ${C.sepiaDeep}`,
+            borderRadius: 12, padding: "10px 18px",
+            cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 6,
+            fontFamily: "Crimson Text, serif", fontSize: 14, fontWeight: 600,
+            WebkitTapHighlightColor: "transparent",
+            minHeight: 44,
+          }}
+        >
+          {playing ? <Pause size={18}/> : <Play size={18}/>}
+          {playing ? "Pausar" : (isLastMove ? "Reiniciar" : "Tocar tudo")}
+        </button>
+        <button
+          onClick={goNext}
+          disabled={isLastMove}
+          aria-label="Próximo lance"
+          style={{
+            backgroundColor: "transparent",
+            border: `2px solid ${isLastMove ? C.creamDark : C.sepia}`,
+            borderRadius: 12, padding: 10,
+            cursor: isLastMove ? "not-allowed" : "pointer",
+            color: isLastMove ? C.creamDark : C.sepia,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            WebkitTapHighlightColor: "transparent",
+            minWidth: 44, minHeight: 44,
+          }}
+        >
+          <ChevronRight size={20}/>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LessonPlayer({ aula, onComplete, onExit, voice, onMenu, isMobile, viewport, savedSlideIdx, onSlideChange, lessonProgress, onAulaTitleChange }) {
+  // Garante que savedSlideIdx esteja dentro dos limites
+  const safeInitialIdx = Math.min(Math.max(0, savedSlideIdx || 0), aula.slides.length - 1);
+  const [slideIdx, setSlideIdx] = useState(safeInitialIdx);
+  const [quizAnswered, setQuizAnswered] = useState({});
+  const [practiceCompleted, setPracticeCompleted] = useState({});
+
+  // Reset slideIdx ao trocar de aula (impede slide fora dos limites)
+  useEffect(() => {
+    const safe = Math.min(Math.max(0, savedSlideIdx || 0), aula.slides.length - 1);
+    setSlideIdx(safe);
+  }, [aula.n]);
+
+  const slide = aula.slides[slideIdx] || aula.slides[0];
+  const isLast = slideIdx === aula.slides.length - 1;
+
+  // Persiste slide atual no progresso
+  useEffect(() => {
+    onSlideChange?.(slideIdx);
+  }, [slideIdx]);
+
+  // Reset estados de quiz/prática ao trocar de aula (não slide)
+  useEffect(() => {
+    setQuizAnswered({});
+    setPracticeCompleted({});
+  }, [aula.n]);
+
+  // Auto-fala (só para slides que NÃO são gameReplay — esse cuida da própria fala por lance)
+  useEffect(() => {
+    if (slide?.texto && slide?.type !== "gameReplay") voice.speak(slide.texto);
+    return () => voice.stop();
+  }, [slideIdx, aula.n]);
+
+  const goNext = () => {
+    if (slideIdx < aula.slides.length - 1) {
+      setSlideIdx(slideIdx + 1);
+    } else {
+      onComplete();
+    }
+  };
+  const goPrev = () => slideIdx > 0 && setSlideIdx(slideIdx - 1);
+
+  // BUG FIX: sempre permite avançar. Quiz/prática são opcionais.
+  // O "Pular" se torna disponível em todos os slides.
+  const progress = ((slideIdx + 1) / aula.slides.length) * 100;
+  const hasInteraction = slide.type === "quiz" || slide.type === "practice";
+  const interactionDone = slide.type === "quiz" ? quizAnswered[slideIdx] :
+                          slide.type === "practice" ? practiceCompleted[slideIdx] : true;
+
+  const showBoard = slide.board || slide.bigPiece || slide.type === "gameReplay";
+
+  return (
+    <div style={{ minHeight: "100vh", backgroundColor: C.cream, display: "flex", flexDirection: "column" }}>
+      <Header
+        isMobile={isMobile}
+        onHome={onExit}
+        onMenu={onMenu}
+        voiceEnabled={voice.enabled}
+        onToggleVoice={() => voice.setEnabled(!voice.enabled)}
+        onUnlockVoice={voice.unlock}
+        currentTitle={`${aula.n}. ${aula.titulo}`}
+      />
+
+      {/* Progresso da aula */}
+      <div style={{ height: 4, backgroundColor: C.creamDark, position: "relative" }}>
+        <motion.div
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.3 }}
+          style={{
+            position: "absolute", left: 0, top: 0, bottom: 0,
+            background: `linear-gradient(90deg, ${C.moss}, ${C.gold})`,
+          }}
+        />
+      </div>
+
+      {/* Slide */}
+      <div style={{
+        flex: 1, display: "flex", justifyContent: "center", alignItems: "flex-start",
+        padding: isMobile ? "20px 16px" : "32px 32px",
+        overflow: "auto",
+      }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`${aula.n}-${slideIdx}`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              maxWidth: 1100, width: "100%",
+              display: "grid",
+              gridTemplateColumns: showBoard && !isMobile ? "1fr 1fr" : "1fr",
+              gap: isMobile ? 24 : 40,
+              alignItems: "start",
+            }}
+          >
+            {/* Coluna texto */}
+            <div style={{ order: isMobile && showBoard ? 2 : 1 }}>
+              {slide.type === "intro" && (
+                <div style={{
+                  fontSize: 12, letterSpacing: "0.3em", color: C.gold,
+                  fontFamily: "Crimson Text, serif", marginBottom: 10,
+                  textTransform: "uppercase",
+                }}>
+                  ✦ Início da aula
+                </div>
+              )}
+              {slide.type === "complete" && (
+                <div style={{
+                  fontSize: 12, letterSpacing: "0.3em", color: C.moss,
+                  fontFamily: "Crimson Text, serif", marginBottom: 10,
+                  textTransform: "uppercase",
+                }}>
+                  ✦ Aula concluída
+                </div>
+              )}
+              <h2 style={{
+                fontFamily: "Cormorant Garamond, serif",
+                fontSize: isMobile ? 30 : 40, color: C.ink, lineHeight: 1.1,
+                marginBottom: 16, fontWeight: 600, marginTop: 0,
+              }}>
+                {slide.titulo}
+              </h2>
+
+              {slide.bigPiece && (
+                <div style={{
+                  display: "inline-flex", marginBottom: 18,
+                  padding: 18, backgroundColor: C.parchment,
+                  borderRadius: 14, border: `2px solid ${C.gold}`,
+                }}>
+                  <PieceSvg type={slide.bigPiece.type} color={slide.bigPiece.color} size={isMobile ? 90 : 110}/>
+                </div>
+              )}
+
+              {slide.texto && (
+                <p style={{
+                  fontFamily: "Crimson Text, serif",
+                  fontSize: isMobile ? 17 : 19, lineHeight: 1.55, color: C.sepiaDeep,
+                  whiteSpace: "pre-wrap", margin: 0,
+                }}>
+                  {slide.texto}
+                </p>
+              )}
+
+              {slide.type === "quiz" && (
+                <QuizBlock
+                  slideIdx={slideIdx}
+                  pergunta={slide.pergunta}
+                  opcoes={slide.opcoes}
+                  correta={slide.correta}
+                  explicacao={slide.explicacao}
+                  answered={quizAnswered[slideIdx]}
+                  onAnswer={(correct) => {
+                    if (correct) setQuizAnswered(prev => ({ ...prev, [slideIdx]: true }));
+                  }}
+                  voice={voice}
+                />
+              )}
+
+              {slide.link && (
+                <a
+                  href={slide.link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    marginTop: 20, alignItems: "center", gap: 10,
+                    backgroundColor: C.gold, color: C.ink,
+                    border: `2px solid ${C.sepiaDeep}`,
+                    borderRadius: 14, padding: "14px 22px",
+                    textDecoration: "none",
+                    fontSize: 16, fontFamily: "Crimson Text, serif", fontWeight: 600,
+                    boxShadow: "0 4px 12px rgba(184,148,90,0.3)",
+                    WebkitTapHighlightColor: "transparent",
+                    minHeight: 50,
+                  }}
+                >
+                  <ExternalLink size={18}/>
+                  {slide.link.label}
+                </a>
+              )}
+
+              {voice.enabled && slide.texto && (
+                <button
+                  onClick={() => voice.speak(slide.texto)}
+                  style={{
+                    marginTop: 18, background: "transparent",
+                    border: `1px solid ${C.sepia}`, borderRadius: 22,
+                    padding: "8px 16px", cursor: "pointer",
+                    color: C.sepia, fontSize: 13, fontFamily: "Crimson Text, serif",
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    WebkitTapHighlightColor: "transparent",
+                    minHeight: 40,
+                  }}
+                >
+                  <Volume2 size={14}/> Ouvir explicação
+                </button>
+              )}
+            </div>
+
+            {/* Coluna tabuleiro */}
+            {slide.board && (
+              <div style={{
+                order: isMobile && showBoard ? 1 : 2,
+                display: "flex", justifyContent: "center",
+              }}>
+                <PracticeBoard
+                  slide={slide}
+                  slideIdx={slideIdx}
+                  onComplete={() => setPracticeCompleted(prev => ({ ...prev, [slideIdx]: true }))}
+                  completed={practiceCompleted[slideIdx]}
+                  isMobile={isMobile}
+                  viewport={viewport}
+                />
+              </div>
+            )}
+
+            {/* Game Replay (partidas lance a lance) */}
+            {slide.type === "gameReplay" && (
+              <div style={{
+                order: isMobile && showBoard ? 1 : 2,
+                display: "flex", justifyContent: "center",
+              }}>
+                <GameReplay
+                  slide={slide}
+                  slideIdx={slideIdx}
+                  isMobile={isMobile}
+                  viewport={viewport}
+                  voice={voice}
+                />
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Controles inferior */}
+      <div style={{
+        backgroundColor: C.parchment, borderTop: `1px solid ${C.creamDark}`,
+        padding: isMobile ? "12px 14px" : "16px 28px",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        gap: 10,
+        position: "sticky", bottom: 0,
+      }}>
+        <button
+          onClick={goPrev}
+          disabled={slideIdx === 0}
+          style={{
+            background: "transparent",
+            border: `2px solid ${slideIdx === 0 ? C.creamDark : C.sepia}`,
+            borderRadius: 12, padding: isMobile ? "10px 14px" : "12px 18px",
+            cursor: slideIdx === 0 ? "not-allowed" : "pointer",
+            color: slideIdx === 0 ? C.creamDark : C.sepia,
+            fontSize: 15, fontFamily: "Crimson Text, serif",
+            display: "flex", alignItems: "center", gap: 6,
+            WebkitTapHighlightColor: "transparent",
+            minHeight: 44,
+          }}
+        >
+          <ChevronLeft size={18}/>
+          {!isMobile && "Anterior"}
+        </button>
+
+        <div style={{
+          fontFamily: "Crimson Text, serif", color: C.sepia, fontSize: 13,
+          textAlign: "center", flex: isMobile ? "0 0 auto" : 1,
+        }}>
+          {slideIdx + 1} / {aula.slides.length}
+        </div>
+
+        <button
+          onClick={goNext}
+          style={{
+            backgroundColor: isLast ? C.gold : C.moss,
+            color: isLast ? C.ink : C.cream,
+            border: `2px solid ${C.sepiaDeep}`,
+            borderRadius: 12, padding: isMobile ? "10px 16px" : "12px 22px",
+            cursor: "pointer",
+            fontSize: 15, fontFamily: "Crimson Text, serif",
+            fontWeight: 500,
+            display: "flex", alignItems: "center", gap: 6,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            WebkitTapHighlightColor: "transparent",
+            minHeight: 44,
+          }}
+        >
+          {hasInteraction && !interactionDone && !isLast ? "Pular" : (isLast ? "Concluir" : "Próximo")}
+          {isLast ? <Award size={18}/> : <ChevronRight size={18}/>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────── APP PRINCIPAL ─────────────────────────
 export default function App() {
-  const [screen, setScreen] = useState("home"); // home | map | lesson
+  const [screen, setScreen] = useState("home");
   const [currentLesson, setCurrentLesson] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const progress = useProgress();
   const voice = useVoice();
+  const viewport = useViewport();
 
-  // Carrega vozes do navegador (algumas só ficam disponíveis depois de um event)
+  // Carrega vozes
   useEffect(() => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = () => {};
+      const onChange = () => {};
+      window.speechSynthesis.onvoiceschanged = onChange;
       window.speechSynthesis.getVoices();
     }
   }, []);
 
   function startCourse() {
-    const firstUncompleted = TODAS_AULAS.find(a => !progress.isComplete(a.n)) || TODAS_AULAS[0];
-    setCurrentLesson(firstUncompleted.n);
+    setCurrentLesson(1);
+    progress.setLastLesson(1, 0);
     setScreen("lesson");
   }
   function continueCourse() {
-    const firstUncompleted = TODAS_AULAS.find(a => !progress.isComplete(a.n)) || TODAS_AULAS[TODAS_AULAS.length - 1];
-    setCurrentLesson(firstUncompleted.n);
+    const last = progress.lastLesson || 1;
+    setCurrentLesson(last);
     setScreen("lesson");
   }
   function selectLesson(n) {
     setCurrentLesson(n);
+    progress.setLastLesson(n, progress.getSlideForLesson(n));
     setScreen("lesson");
   }
   function completeLesson() {
     progress.markComplete(currentLesson);
     voice.stop();
-    setScreen("map");
+    setMenuOpen(true); // abre menu para escolher próxima
+    if (currentLesson < AULAS.length) {
+      // sugere a próxima
+      const next = currentLesson + 1;
+      progress.setLastLesson(next, 0);
+      setCurrentLesson(next);
+      setScreen("lesson");
+    } else {
+      setScreen("home");
+    }
   }
-
-  // Carrega google fonts uma vez
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    if (document.getElementById("xc-fonts")) return;
-    const link = document.createElement("link");
-    link.id = "xc-fonts";
-    link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&display=swap";
-    document.head.appendChild(link);
-  }, []);
+  function exitToHome() {
+    voice.stop();
+    setScreen("home");
+  }
 
   if (screen === "home") {
     return (
-      <HomeScreen
-        onStart={startCourse}
-        onContinue={continueCourse}
-        hasProgress={progress.completed.size > 0}
-        completedCount={progress.completed.size}
-        voice={voice}
-      />
+      <>
+        <HomeScreen
+          onStart={startCourse}
+          onContinue={continueCourse}
+          hasProgress={progress.completed.size > 0 || progress.lastLesson !== null}
+          completedCount={progress.completed.size}
+          isMobile={viewport.isMobile}
+          voice={voice}
+        />
+        <AulasMenu
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          aulas={AULAS}
+          progress={progress}
+          onSelectLesson={selectLesson}
+          isMobile={viewport.isMobile}
+        />
+      </>
     );
   }
-  if (screen === "map") {
-    return (
-      <LessonMap
-        aulas={TODAS_AULAS}
-        progress={progress}
-        onSelectLesson={selectLesson}
-        onHome={() => setScreen("home")}
-      />
-    );
-  }
+
   if (screen === "lesson") {
-    const aula = TODAS_AULAS.find(a => a.n === currentLesson);
-    if (!aula) return null;
+    const aula = AULAS.find(a => a.n === currentLesson);
+    if (!aula) {
+      setScreen("home");
+      return null;
+    }
     return (
-      <LessonPlayer
-        aula={aula}
-        onComplete={completeLesson}
-        onExit={() => { voice.stop(); setScreen("map"); }}
-        voice={voice}
-      />
+      <>
+        <LessonPlayer
+          aula={aula}
+          onComplete={completeLesson}
+          onExit={exitToHome}
+          voice={voice}
+          onMenu={() => setMenuOpen(true)}
+          isMobile={viewport.isMobile}
+          viewport={viewport}
+          savedSlideIdx={progress.getSlideForLesson(currentLesson)}
+          onSlideChange={(idx) => progress.setLastLesson(currentLesson, idx)}
+        />
+        <AulasMenu
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          aulas={AULAS}
+          progress={progress}
+          onSelectLesson={selectLesson}
+          isMobile={viewport.isMobile}
+        />
+      </>
     );
   }
+
   return null;
 }
