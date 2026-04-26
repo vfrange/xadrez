@@ -5,5 +5,5 @@ import react from "@vitejs/plugin-react";
 // Exemplo: se seu repo for github.com/victor/curso-xadrez, mude para "/curso-xadrez/"
 export default defineConfig({
   plugins: [react()],
-  base: "/xadrez-com-carinho/",
+  base: "/xadrez/",
 });
