@@ -1,6 +1,6 @@
-# Xadrez com Carinho
+# Professor de Xadrez
 
-Curso completo de xadrez em 20 aulas, pensado para ensinar do zero, com calma e visualmente. Do tabuleiro ao xeque-mate técnico de Rei + Torre.
+Curso completo de xadrez em 30 aulas, pensado para ensinar do zero, com calma e visualmente. Do tabuleiro ao xeque-mate técnico de Rei + Torre.
 
 Construído com React, Vite e Framer Motion.
 
