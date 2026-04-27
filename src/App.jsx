@@ -1878,7 +1878,7 @@ const AULAS = [
         type: "explain",
         titulo: "Dica final: jogue muito!",
         texto: "Xadrez se aprende JOGANDO. O Lichess permite você jogar contra o computador no nível mais fácil, de graça e sem cadastro. Comece pelos níveis 1 ou 2 e suba devagar.",
-        link: { url: "https://lichess.org/setup/ai?lang=pt-BR", label: "Jogar agora no Lichess" },
+        link: { url: "https://lichess.org/?lang=pt-BR", label: "Jogar agora no Lichess" },
       },
       {
         type: "explain",
@@ -2224,7 +2224,7 @@ const AULAS = [
         type: "explain",
         titulo: "Quer praticar agora?",
         texto: "Abra o Lichess e jogue uma partida contra o computador no nível 1. Comece com 1.e4 e siga os lances que você acabou de ver. Se errar, sem problema — analise depois.",
-        link: { url: "https://lichess.org/setup/ai?lang=pt-BR", label: "Praticar no Lichess agora" },
+        link: { url: "https://lichess.org/?lang=pt-BR", label: "Praticar no Lichess agora" },
       },
       {
         type: "complete",
@@ -2274,7 +2274,7 @@ const AULAS = [
         type: "explain",
         titulo: "Pratique no Lichess",
         texto: "No Lichess, abra uma partida e quando você for de pretas e o computador jogar 1.e4, responda com 1...c5. Veja o que acontece e use sua intuição. Errar faz parte!",
-        link: { url: "https://lichess.org/setup/ai?lang=pt-BR", label: "Praticar no Lichess" },
+        link: { url: "https://lichess.org/?lang=pt-BR", label: "Praticar no Lichess" },
       },
       {
         type: "complete",
@@ -2355,8 +2355,8 @@ const AULAS = [
       {
         type: "explain",
         titulo: "Configurando uma partida",
-        texto: "Quando o Lichess abrir:\n1) Toque em 'JOGAR' no topo\n2) Escolha 'Contra o computador'\n3) Em 'NÍVEL', escolha 1 (mais fácil)\n4) 'Tempo' — escolha 'Ilimitado' (sem pressão)\n5) Toque em 'JOGAR'",
-        link: { url: "https://lichess.org/setup/ai?lang=pt-BR", label: "Ir direto para 'Jogar contra computador'" },
+        texto: "Quando o Lichess abrir:\n1) Procure a seção 'JOGAR' (no topo) e toque\n2) Escolha 'Jogar contra computador'\n3) Em 'NÍVEL', escolha 1 (mais fácil)\n4) 'Tempo' — escolha 'Ilimitado' (sem pressão)\n5) Escolha sua cor (recomendo brancas pra começar)\n6) Toque em 'Iniciar a partida'",
+        link: { url: "https://lichess.org/?lang=pt-BR", label: "Abrir Lichess" },
       },
       {
         type: "explain",
